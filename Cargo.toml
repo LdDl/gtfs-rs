@@ -1,0 +1,14 @@
+[package]
+name = "gtfs-rs"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.85"
+authors = ["Dmitrii Lopanov <sexykdi@gmail.com>"]
+description = "Complete in-memory data model of the GTFS Schedule specification: every file and field of the reference, dependency-free"
+license = "Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/LdDl/gtfs-rs"
+keywords = ["gtfs", "transit", "public-transport", "schedule", "timetable"]
+categories = ["data-structures", "science::geo"]
+
+[dependencies]
