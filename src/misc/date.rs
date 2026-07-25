@@ -103,7 +103,7 @@ impl GtfsDate {
     }
 
     /// Returns the day of the week (Sakamoto's algorithm).
-    /// Ref: https://www.geeksforgeeks.org/dsa/tomohiko-sakamotos-algorithm-finding-day-week/
+    /// Ref: <https://www.geeksforgeeks.org/dsa/tomohiko-sakamotos-algorithm-finding-day-week/>
     pub fn weekday(&self) -> Weekday {
         const T: [i32; 12] = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
         let mut y = i32::from(self.year);
