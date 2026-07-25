@@ -2,9 +2,9 @@
 //! (GTFS-Flex). The `locations.geojson` zones are not CSV and await
 //! the planned `geojson` parser.
 
-use super::{CsvRecord, Row, opt_string};
 use crate::model::{LocationGroup, LocationGroupStop};
 use crate::parsers::ParseError;
+use crate::parsers::csv::{CsvRecord, Row, opt_string};
 
 impl CsvRecord for LocationGroup {
     const FILE_NAME: &'static str = "location_groups.txt";
@@ -29,9 +29,9 @@ impl CsvRecord for LocationGroupStop {
 
 #[cfg(test)]
 mod tests {
-    use super::super::read;
     use crate::model::{LocationGroup, LocationGroupStop};
     use crate::parsers::ParseError;
+    use crate::parsers::csv::read;
 
     #[test]
     fn test_location_groups_and_stops() -> Result<(), ParseError> {

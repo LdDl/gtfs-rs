@@ -6,7 +6,7 @@ use std::fs::File;
 use std::io;
 use std::path::Path;
 
-use super::{CsvRecord, Row};
+use crate::parsers::csv::{CsvRecord, Row};
 use crate::parsers::{ParseError, ParseErrorKind};
 
 /// Reads all records of one GTFS table from any reader.
@@ -215,7 +215,7 @@ Demo,https://x.example,UTC
 
     #[test]
     fn test_missing_file_reports_io_error() {
-        use super::super::test_support::feed_file;
+        use crate::parsers::csv::test_support::feed_file;
 
         let result: Result<Vec<Agency>, ParseError> = read_path(feed_file("no_such.txt"));
         let Err(err) = result else {

@@ -1,8 +1,8 @@
 //! `feed_info.txt` reader.
 
-use super::{CsvRecord, Row, opt_string};
 use crate::model::FeedInfo;
 use crate::parsers::ParseError;
+use crate::parsers::csv::{CsvRecord, Row, opt_string};
 
 impl CsvRecord for FeedInfo {
     const FILE_NAME: &'static str = "feed_info.txt";
@@ -25,10 +25,10 @@ impl CsvRecord for FeedInfo {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{read, test_support::model};
     use crate::misc::GtfsDate;
     use crate::model::FeedInfo;
     use crate::parsers::ParseError;
+    use crate::parsers::csv::{read, test_support::model};
 
     #[test]
     fn test_feed_info() -> Result<(), ParseError> {

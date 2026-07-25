@@ -1,8 +1,8 @@
 //! `trips.txt` reader.
 
-use super::{CsvRecord, Row, opt_string};
 use crate::model::{BikesAllowed, CarsAllowed, Direction, Trip, WheelchairAccessible};
 use crate::parsers::ParseError;
+use crate::parsers::csv::{CsvRecord, Row, opt_string};
 
 impl CsvRecord for Trip {
     const FILE_NAME: &'static str = "trips.txt";
@@ -39,9 +39,9 @@ impl CsvRecord for Trip {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{read_path, test_support::feed_file};
     use crate::model::{Direction, Trip};
     use crate::parsers::ParseError;
+    use crate::parsers::csv::{read_path, test_support::feed_file};
 
     #[test]
     fn test_sample_trips() -> Result<(), ParseError> {

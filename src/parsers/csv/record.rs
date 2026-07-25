@@ -1,7 +1,7 @@
 //! The [`CsvRecord`] trait: one GTFS entity per CSV row.
 
-use super::Row;
 use crate::parsers::ParseError;
+use crate::parsers::csv::Row;
 
 /// A GTFS entity readable from one CSV row.
 ///

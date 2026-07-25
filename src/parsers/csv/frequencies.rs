@@ -1,8 +1,8 @@
 //! `frequencies.txt` reader.
 
-use super::{CsvRecord, Row};
 use crate::model::{ExactTimes, Frequency};
 use crate::parsers::ParseError;
+use crate::parsers::csv::{CsvRecord, Row};
 
 impl CsvRecord for Frequency {
     const FILE_NAME: &'static str = "frequencies.txt";
@@ -23,9 +23,9 @@ impl CsvRecord for Frequency {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{read_path, test_support::feed_file};
     use crate::model::{ExactTimes, Frequency};
     use crate::parsers::ParseError;
+    use crate::parsers::csv::{read_path, test_support::feed_file};
 
     #[test]
     fn test_sample_frequencies() -> Result<(), ParseError> {

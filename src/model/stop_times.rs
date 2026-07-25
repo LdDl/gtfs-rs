@@ -3,7 +3,7 @@
 //!
 //! Reference: <https://gtfs.org/documentation/schedule/reference/#stop_timestxt>
 
-use super::routes::ContinuousPickupDropOff;
+use crate::model::routes::ContinuousPickupDropOff;
 
 gtfs_enum! {
     /// Pickup or drop-off method at a stop (`pickup_type` and

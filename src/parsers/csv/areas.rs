@@ -1,8 +1,8 @@
 //! `areas.txt` and `stop_areas.txt` readers.
 
-use super::{CsvRecord, Row, opt_string};
 use crate::model::{Area, StopArea};
 use crate::parsers::ParseError;
+use crate::parsers::csv::{CsvRecord, Row, opt_string};
 
 impl CsvRecord for Area {
     const FILE_NAME: &'static str = "areas.txt";
@@ -24,9 +24,9 @@ impl CsvRecord for StopArea {
 
 #[cfg(test)]
 mod tests {
-    use super::super::read;
     use crate::model::{Area, StopArea};
     use crate::parsers::ParseError;
+    use crate::parsers::csv::read;
 
     #[test]
     fn test_areas_and_stop_areas() -> Result<(), ParseError> {

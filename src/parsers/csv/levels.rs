@@ -1,8 +1,8 @@
 //! `levels.txt` reader.
 
-use super::{CsvRecord, Row, opt_string};
 use crate::model::Level;
 use crate::parsers::ParseError;
+use crate::parsers::csv::{CsvRecord, Row, opt_string};
 
 impl CsvRecord for Level {
     const FILE_NAME: &'static str = "levels.txt";
@@ -19,9 +19,9 @@ impl CsvRecord for Level {
 
 #[cfg(test)]
 mod tests {
-    use super::super::read;
     use crate::model::Level;
     use crate::parsers::ParseError;
+    use crate::parsers::csv::read;
 
     #[test]
     fn test_levels() -> Result<(), ParseError> {

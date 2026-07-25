@@ -1,8 +1,8 @@
 //! `attributions.txt` reader.
 
-use super::{CsvRecord, Row, opt_string};
 use crate::model::Attribution;
 use crate::parsers::ParseError;
+use crate::parsers::csv::{CsvRecord, Row, opt_string};
 
 impl CsvRecord for Attribution {
     const FILE_NAME: &'static str = "attributions.txt";
@@ -25,9 +25,9 @@ impl CsvRecord for Attribution {
 
 #[cfg(test)]
 mod tests {
-    use super::super::read;
     use crate::model::Attribution;
     use crate::parsers::ParseError;
+    use crate::parsers::csv::read;
 
     #[test]
     fn test_attributions() -> Result<(), ParseError> {

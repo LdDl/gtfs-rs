@@ -1,8 +1,8 @@
 //! `booking_rules.txt` reader (GTFS-Flex).
 
-use super::{CsvRecord, Row, opt_string};
 use crate::model::{BookingRule, BookingType};
 use crate::parsers::ParseError;
+use crate::parsers::csv::{CsvRecord, Row, opt_string};
 
 impl CsvRecord for BookingRule {
     const FILE_NAME: &'static str = "booking_rules.txt";
@@ -31,9 +31,9 @@ impl CsvRecord for BookingRule {
 
 #[cfg(test)]
 mod tests {
-    use super::super::read;
     use crate::model::{BookingRule, BookingType};
     use crate::parsers::ParseError;
+    use crate::parsers::csv::read;
 
     #[test]
     fn test_booking_rules() -> Result<(), ParseError> {

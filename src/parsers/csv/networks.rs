@@ -1,8 +1,8 @@
 //! `networks.txt` and `route_networks.txt` readers.
 
-use super::{CsvRecord, Row, opt_string};
 use crate::model::{Network, RouteNetwork};
 use crate::parsers::ParseError;
+use crate::parsers::csv::{CsvRecord, Row, opt_string};
 
 impl CsvRecord for Network {
     const FILE_NAME: &'static str = "networks.txt";
@@ -27,9 +27,9 @@ impl CsvRecord for RouteNetwork {
 
 #[cfg(test)]
 mod tests {
-    use super::super::read;
     use crate::model::{Network, RouteNetwork};
     use crate::parsers::ParseError;
+    use crate::parsers::csv::read;
 
     #[test]
     fn test_networks_and_route_networks() -> Result<(), ParseError> {

@@ -1,8 +1,8 @@
 //! `calendar.txt` and `calendar_dates.txt` readers.
 
-use super::{CsvRecord, Row};
 use crate::model::{Calendar, CalendarDate, ExceptionType};
 use crate::parsers::ParseError;
+use crate::parsers::csv::{CsvRecord, Row};
 
 impl CsvRecord for Calendar {
     const FILE_NAME: &'static str = "calendar.txt";
@@ -38,13 +38,13 @@ impl CsvRecord for CalendarDate {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{
-        read_path,
-        test_support::{feed_file, model},
-    };
     use crate::misc::GtfsDate;
     use crate::model::{Calendar, CalendarDate, ExceptionType};
     use crate::parsers::ParseError;
+    use crate::parsers::csv::{
+        read_path,
+        test_support::{feed_file, model},
+    };
 
     #[test]
     fn test_sample_calendar() -> Result<(), ParseError> {

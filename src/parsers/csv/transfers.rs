@@ -1,8 +1,8 @@
 //! `transfers.txt` reader.
 
-use super::{CsvRecord, Row, opt_string};
 use crate::model::{Transfer, TransferType};
 use crate::parsers::ParseError;
+use crate::parsers::csv::{CsvRecord, Row, opt_string};
 
 impl CsvRecord for Transfer {
     const FILE_NAME: &'static str = "transfers.txt";
@@ -25,9 +25,9 @@ impl CsvRecord for Transfer {
 
 #[cfg(test)]
 mod tests {
-    use super::super::read;
     use crate::model::{Transfer, TransferType};
     use crate::parsers::ParseError;
+    use crate::parsers::csv::read;
 
     #[test]
     fn test_transfers() -> Result<(), ParseError> {

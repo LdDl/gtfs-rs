@@ -1,8 +1,8 @@
 //! `agency.txt` reader.
 
-use super::{CsvRecord, Row, opt_string};
 use crate::model::{Agency, CemvSupport};
 use crate::parsers::ParseError;
+use crate::parsers::csv::{CsvRecord, Row, opt_string};
 
 impl CsvRecord for Agency {
     const FILE_NAME: &'static str = "agency.txt";
@@ -27,9 +27,9 @@ impl CsvRecord for Agency {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{read_path, test_support::feed_file};
     use crate::model::Agency;
     use crate::parsers::ParseError;
+    use crate::parsers::csv::{read_path, test_support::feed_file};
 
     #[test]
     fn test_sample_agency() -> Result<(), ParseError> {

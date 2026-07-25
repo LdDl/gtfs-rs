@@ -1,8 +1,8 @@
 //! `stop_times.txt` reader.
 
-use super::{CsvRecord, Row, opt_string};
 use crate::model::{ContinuousPickupDropOff, PickupDropOffType, StopTime, Timepoint};
 use crate::parsers::ParseError;
+use crate::parsers::csv::{CsvRecord, Row, opt_string};
 
 impl CsvRecord for StopTime {
     const FILE_NAME: &'static str = "stop_times.txt";
@@ -51,9 +51,9 @@ impl CsvRecord for StopTime {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{read, read_path, test_support::feed_file};
     use crate::model::{PickupDropOffType, StopTime};
     use crate::parsers::ParseError;
+    use crate::parsers::csv::{read, read_path, test_support::feed_file};
 
     #[test]
     fn test_sample_stop_times() -> Result<(), ParseError> {

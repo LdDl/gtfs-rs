@@ -1,8 +1,8 @@
 //! `routes.txt` reader.
 
-use super::{CsvRecord, Row, opt_string};
 use crate::model::{CemvSupport, ContinuousPickupDropOff, Route, RouteType};
 use crate::parsers::ParseError;
+use crate::parsers::csv::{CsvRecord, Row, opt_string};
 
 impl CsvRecord for Route {
     const FILE_NAME: &'static str = "routes.txt";
@@ -42,9 +42,9 @@ impl CsvRecord for Route {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{read, read_path, test_support::feed_file};
     use crate::model::{Route, RouteType};
     use crate::parsers::ParseError;
+    use crate::parsers::csv::{read, read_path, test_support::feed_file};
 
     #[test]
     fn test_sample_routes() -> Result<(), ParseError> {

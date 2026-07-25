@@ -1,8 +1,8 @@
 //! `shapes.txt` reader.
 
-use super::{CsvRecord, Row};
 use crate::model::ShapePoint;
 use crate::parsers::ParseError;
+use crate::parsers::csv::{CsvRecord, Row};
 
 impl CsvRecord for ShapePoint {
     const FILE_NAME: &'static str = "shapes.txt";
@@ -21,9 +21,9 @@ impl CsvRecord for ShapePoint {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{read, read_path, test_support::feed_file};
     use crate::model::ShapePoint;
     use crate::parsers::ParseError;
+    use crate::parsers::csv::{read, read_path, test_support::feed_file};
 
     #[test]
     fn test_sample_shapes_header_only() -> Result<(), ParseError> {

@@ -1,8 +1,8 @@
 //! `pathways.txt` reader.
 
-use super::{CsvRecord, Row, opt_string};
 use crate::model::{Pathway, PathwayMode};
 use crate::parsers::ParseError;
+use crate::parsers::csv::{CsvRecord, Row, opt_string};
 
 impl CsvRecord for Pathway {
     const FILE_NAME: &'static str = "pathways.txt";
@@ -28,9 +28,9 @@ impl CsvRecord for Pathway {
 
 #[cfg(test)]
 mod tests {
-    use super::super::read;
     use crate::model::{Pathway, PathwayMode};
     use crate::parsers::ParseError;
+    use crate::parsers::csv::read;
 
     #[test]
     fn test_pathways() -> Result<(), ParseError> {

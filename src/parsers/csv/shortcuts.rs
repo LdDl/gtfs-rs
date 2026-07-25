@@ -4,7 +4,6 @@
 
 use std::path::Path;
 
-use super::read_path;
 use crate::model::{
     Agency, Area, Attribution, BookingRule, Calendar, CalendarDate, FareAttributeV1,
     FareLegJoinRule, FareLegRule, FareMedia, FareProduct, FareRuleV1, FareTransferRule, FeedInfo,
@@ -12,6 +11,7 @@ use crate::model::{
     RouteNetwork, ShapePoint, Stop, StopArea, StopTime, Timeframe, Transfer, Translation, Trip,
 };
 use crate::parsers::ParseError;
+use crate::parsers::csv::read_path;
 
 /// Generates a named shortcut for reading one GTFS table by path.
 macro_rules! table_shortcut {
@@ -94,8 +94,8 @@ table_shortcut!(read_attributions, Attribution, "attributions.txt");
 
 #[cfg(test)]
 mod tests {
-    use super::super::test_support::feed_file;
     use super::*;
+    use crate::parsers::csv::test_support::feed_file;
 
     #[test]
     fn test_shortcut_reads_sample_agency() -> Result<(), ParseError> {

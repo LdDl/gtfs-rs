@@ -3,7 +3,7 @@
 //!
 //! Reference: <https://gtfs.org/documentation/schedule/reference/#routestxt>
 
-use super::agency::CemvSupport;
+use crate::model::agency::CemvSupport;
 
 /// Indicates the type of transportation used on a route
 /// (`route_type`).

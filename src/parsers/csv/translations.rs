@@ -1,8 +1,8 @@
 //! `translations.txt` reader.
 
-use super::{CsvRecord, Row, opt_string};
 use crate::model::{TableName, Translation};
 use crate::parsers::ParseError;
+use crate::parsers::csv::{CsvRecord, Row, opt_string};
 
 impl CsvRecord for Translation {
     const FILE_NAME: &'static str = "translations.txt";
@@ -28,8 +28,8 @@ impl CsvRecord for Translation {
 
 #[cfg(test)]
 mod tests {
-    use super::super::read;
     use crate::model::{TableName, Translation};
+    use crate::parsers::csv::read;
     use crate::parsers::{ParseError, ParseErrorKind};
 
     #[test]

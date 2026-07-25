@@ -4,13 +4,13 @@
 //! `fare_leg_rules.txt`, `fare_leg_join_rules.txt` and
 //! `fare_transfer_rules.txt`.
 
-use super::{CsvRecord, Row, opt_string};
 use crate::model::{
     DurationLimitType, FareAttributeV1, FareLegJoinRule, FareLegRule, FareMedia, FareMediaType,
     FareProduct, FareRuleV1, FareTransferRule, FareTransferType, FareTransfers, PaymentMethod,
     RiderCategory, Timeframe,
 };
 use crate::parsers::ParseError;
+use crate::parsers::csv::{CsvRecord, Row, opt_string};
 
 impl CsvRecord for FareAttributeV1 {
     const FILE_NAME: &'static str = "fare_attributes.txt";
@@ -160,16 +160,16 @@ impl CsvRecord for FareTransferRule {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{
-        read, read_path,
-        test_support::{feed_file, model},
-    };
     use crate::misc::CurrencyAmount;
     use crate::model::{
         FareAttributeV1, FareLegRule, FareMedia, FareMediaType, FareProduct, FareRuleV1,
         FareTransferRule, FareTransferType, FareTransfers, PaymentMethod, RiderCategory, Timeframe,
     };
     use crate::parsers::ParseError;
+    use crate::parsers::csv::{
+        read, read_path,
+        test_support::{feed_file, model},
+    };
 
     #[test]
     fn test_sample_fare_attributes() -> Result<(), ParseError> {
