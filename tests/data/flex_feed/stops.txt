@@ -1,0 +1,2 @@
+stop_id,stop_name,stop_lat,stop_lon
+DEPOT,Flex Depot,36.900000,-116.750000

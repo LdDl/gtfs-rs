@@ -1,0 +1,37 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "id": "zone_a",
+      "properties": {
+        "stop_name": "Demo flex zone A",
+        "stop_desc": "Call 30 minutes ahead to arrange pickup"
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[
+          [-116.80, 36.85], [-116.70, 36.85],
+          [-116.70, 36.95], [-116.80, 36.95],
+          [-116.80, 36.85]
+        ]]
+      }
+    },
+    {
+      "type": "Feature",
+      "id": "zone_b",
+      "properties": {
+        "stop_name": "Demo flex zone B"
+      },
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [[
+            [-116.68, 36.90], [-116.60, 36.90],
+            [-116.60, 36.98], [-116.68, 36.90]
+          ]]
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+route_id,service_id,trip_id
+FLEX1,DAILY,FLEX1_t1

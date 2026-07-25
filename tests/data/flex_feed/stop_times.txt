@@ -1,0 +1,3 @@
+trip_id,stop_sequence,location_id,start_pickup_drop_off_window,end_pickup_drop_off_window,pickup_type,drop_off_type,pickup_booking_rule_id,drop_off_booking_rule_id
+FLEX1_t1,1,zone_a,08:00:00,18:00:00,2,1,CALL_AHEAD,
+FLEX1_t1,2,zone_a,08:00:00,18:00:00,1,2,,CALL_AHEAD
