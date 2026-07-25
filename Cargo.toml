@@ -11,4 +11,13 @@ repository = "https://github.com/LdDl/gtfs-rs"
 keywords = ["gtfs", "transit", "public-transport", "schedule", "timetable"]
 categories = ["data-structures", "science::geo"]
 
+[features]
+# CSV parsing of GTFS tables (gtfs_rs::parsers::csv); adds the `csv`
+# dependency
+parse = ["dep:csv"]
+
 [dependencies]
+csv = { version = "1", optional = true }
+
+[package.metadata.docs.rs]
+all-features = true
