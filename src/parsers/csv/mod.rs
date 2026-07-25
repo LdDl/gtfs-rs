@@ -5,11 +5,12 @@
 //! ignored, as the specification requires. Values are trimmed; an
 //! empty value maps to `None` for optional fields.
 //!
-//! Read one table from a path with [`read_path`] (e.g. only
-//! `agency.txt`), a whole unpacked feed directory with [`read_dir`],
-//! or any [`std::io::Read`] source with [`read`]. Entities implement
-//! [`CsvRecord`]; the same trait can be implemented for custom types
-//! to read GTFS extensions.
+//! Read one table from a path with its named shortcut (e.g.
+//! [`read_agencies`]), a whole unpacked feed directory with
+//! [`read_dir`], or any [`std::io::Read`] source with [`read`]. The
+//! generic [`read_path`] underlies the shortcuts and serves custom
+//! extension tables: entities implement [`CsvRecord`], and the same
+//! trait can be implemented for user-defined types.
 //!
 //! Module layout: [`Row`] and its typed accessors live in `row.rs`,
 //! the [`CsvRecord`] trait in `record.rs`, the reading functions in
@@ -34,6 +35,7 @@ mod record;
 mod routes;
 mod row;
 mod shapes;
+mod shortcuts;
 mod stop_times;
 mod stops;
 #[cfg(test)]
@@ -46,3 +48,4 @@ pub use reader::{read, read_dir, read_path};
 pub use record::CsvRecord;
 pub use row::Row;
 pub(crate) use row::opt_string;
+pub use shortcuts::*;
