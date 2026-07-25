@@ -235,8 +235,9 @@ pub struct Route {
     /// [`ContinuousPickupDropOff`]; the default (`1` or empty, no
     /// continuous stopping drop off) is encoded via `Default`.
     pub continuous_drop_off: ContinuousPickupDropOff,
-    /// Identifies a group of routes (GTFS-Fares v2). Multiple rows
-    /// in `routes.txt` may have the same `network_id`.
+    /// Identifies a group of routes for fare matching
+    /// (GTFS-Fares v2). Multiple rows in `routes.txt` may have the
+    /// same `network_id`.
     ///
     /// Conditionally Forbidden: forbidden if the
     /// `route_networks.txt` or `networks.txt` file exists; optional
