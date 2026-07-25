@@ -6,11 +6,13 @@
 //! empty value maps to `None` for optional fields.
 //!
 //! Read one table from a path with its named shortcut (e.g.
-//! [`read_agencies`]), a whole unpacked feed directory with
-//! [`read_dir`], or any [`std::io::Read`] source with [`read`]. The
-//! generic [`read_path`] underlies the shortcuts and serves custom
-//! extension tables: entities implement [`CsvRecord`], and the same
-//! trait can be implemented for user-defined types.
+//! [`read_agencies`]) or from any [`std::io::Read`] source with
+//! [`read`]. The generic [`read_path`] underlies the shortcuts and
+//! serves custom extension tables: entities implement [`CsvRecord`],
+//! and the same trait can be implemented for user-defined types.
+//! Whole unpacked feed directories are read one level up, by
+//! [`read_dir`](crate::parsers::read_dir), which orchestrates this
+//! module and the `geojson` parser.
 //!
 //! Module layout: [`Row`] and its typed accessors live in `row.rs`,
 //! the [`CsvRecord`] trait in `record.rs`, the reading functions in
@@ -39,12 +41,12 @@ mod shortcuts;
 mod stop_times;
 mod stops;
 #[cfg(test)]
-mod test_support;
+pub(crate) mod test_support;
 mod transfers;
 mod translations;
 mod trips;
 
-pub use reader::{read, read_dir, read_path};
+pub use reader::{read, read_path};
 pub use record::CsvRecord;
 pub use row::Row;
 pub(crate) use row::opt_string;

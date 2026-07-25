@@ -115,6 +115,7 @@ fn main() {
   `cargo run --example read_feed --features parse`.
 
   ```rust
+  use gtfs_rs::parsers;
   use gtfs_rs::parsers::csv;
 
   fn main() {
@@ -125,7 +126,7 @@ fn main() {
       }
 
       // or a whole unpacked feed directory at once
-      match csv::read_dir("tests/data/sample_feed") {
+      match parsers::read_dir("tests/data/sample_feed") {
           Ok(gtfs) => {
               println!(
                   "loaded {} routes, {} trips, {} stop times",
@@ -150,14 +151,32 @@ fn main() {
   `csv::read_path::<T>(path)` underlies them and serves custom
   extension tables.
 
+- `geojson` (off by default; implies `parse`) - the
+  `gtfs_rs::parsers::geojson` module reading the GTFS-Flex
+  `locations.geojson` zones; adds the `serde_json` dependency. With
+  the feature enabled, `parsers::read_dir` picks the file up
+  automatically; a single file reads as:
+
+  ```rust
+  use gtfs_rs::parsers::{ParseError, geojson};
+
+  fn main() -> Result<(), ParseError> {
+      match geojson::read_locations("tests/data/flex_feed/locations.geojson") {
+          Ok(zones) => println!("{} on-demand zones", zones.len()),
+          Err(e) => eprintln!("failed to read zones: {e}"),
+      }
+      Ok(())
+  }
+  ```
+
 ## Scope
 
-The crate models the dataset; it does not read or write files.
+The crate models the dataset; writing files is not implemented yet.
 Deliberately out of scope, but W.I.P.:
 
-- GeoJSON parsing and serialization - entity structs mirror the
-  spec field-for-field so parsers can be layered on top;
+- serialization (writing feeds back to CSV/GeoJSON);
 - feed validation beyond basic type safety;
+- reading zipped feeds (a `zip` parser next to `csv`/`geojson`);
 
 Don't think gonna do it, but maybe:
 - GTFS Realtime.

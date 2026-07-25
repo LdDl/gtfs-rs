@@ -17,10 +17,10 @@ use crate::parsers::ParseError;
 macro_rules! table_shortcut {
     ($name:ident, $entity:ident, $file:literal) => {
         #[doc = concat!(
-                    "Reads `", $file, "` from a path: a named shortcut for ",
-                    "[`read_path`] with the [`", stringify!($entity),
-                    "`](crate::model::", stringify!($entity), ") entity type."
-                )]
+                                    "Reads `", $file, "` from a path: a named shortcut for ",
+                                    "[`read_path`] with the [`", stringify!($entity),
+                                    "`](crate::model::", stringify!($entity), ") entity type."
+                                )]
         ///
         /// The path may have any file name; see [`read_path`].
         ///
@@ -31,17 +31,17 @@ macro_rules! table_shortcut {
         /// # Examples
         ///
         #[doc = concat!(
-                    "```no_run\n",
-                    "use gtfs_rs::parsers::{ParseError, csv};\n",
-                    "\n",
-                    "fn main() -> Result<(), ParseError> {\n",
-                    "    let records = csv::", stringify!($name),
-                    "(\"feed/", $file, "\")?;\n",
-                    "    println!(\"{} records\", records.len());\n",
-                    "    Ok(())\n",
-                    "}\n",
-                    "```"
-                )]
+                                    "```no_run\n",
+                                    "use gtfs_rs::parsers::{ParseError, csv};\n",
+                                    "\n",
+                                    "fn main() -> Result<(), ParseError> {\n",
+                                    "    let records = csv::", stringify!($name),
+                                    "(\"feed/", $file, "\")?;\n",
+                                    "    println!(\"{} records\", records.len());\n",
+                                    "    Ok(())\n",
+                                    "}\n",
+                                    "```"
+                                )]
         pub fn $name(path: impl AsRef<Path>) -> Result<Vec<$entity>, ParseError> {
             read_path(path)
         }

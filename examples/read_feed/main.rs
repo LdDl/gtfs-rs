@@ -7,6 +7,7 @@
 //! cargo run --example read_feed --features parse
 //! ```
 
+use gtfs_rs::parsers;
 use gtfs_rs::parsers::csv;
 
 fn main() {
@@ -17,7 +18,7 @@ fn main() {
     }
 
     // or a whole unpacked feed directory at once
-    match csv::read_dir("tests/data/sample_feed") {
+    match parsers::read_dir("tests/data/sample_feed") {
         Ok(gtfs) => {
             println!(
                 "loaded {} routes, {} trips, {} stop times",

@@ -44,6 +44,9 @@
 //!
 //! - `parse` (off by default) - the `parsers` module with CSV
 //!   readers for the dataset tables; adds the `csv` dependency.
+//! - `geojson` (off by default, implies `parse`) - the
+//!   `parsers::geojson` module reading GTFS-Flex
+//!   `locations.geojson`; adds the `serde_json` dependency.
 //!
 //! # Examples
 //!

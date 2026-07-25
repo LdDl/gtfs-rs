@@ -32,6 +32,9 @@ pub enum ParseErrorKind {
     Io(io::Error),
     /// The CSV structure is malformed
     Csv(csv::Error),
+    /// The JSON structure is malformed (`locations.geojson`)
+    #[cfg(feature = "geojson")]
+    Json(serde_json::Error),
     /// A required column is missing from the header
     MissingColumn,
     /// A required field has an empty value
@@ -61,6 +64,8 @@ impl fmt::Display for ParseError {
         match &self.kind {
             ParseErrorKind::Io(e) => write!(f, ": {}", e),
             ParseErrorKind::Csv(e) => write!(f, ": {}", e),
+            #[cfg(feature = "geojson")]
+            ParseErrorKind::Json(e) => write!(f, ": invalid JSON: {}", e),
             ParseErrorKind::MissingColumn => {
                 write!(f, ": required column is missing")
             }
@@ -80,6 +85,8 @@ impl std::error::Error for ParseError {
         match &self.kind {
             ParseErrorKind::Io(e) => Some(e),
             ParseErrorKind::Csv(e) => Some(e),
+            #[cfg(feature = "geojson")]
+            ParseErrorKind::Json(e) => Some(e),
             ParseErrorKind::Model(e) => Some(e),
             _ => None,
         }
