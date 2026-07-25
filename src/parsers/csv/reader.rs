@@ -18,6 +18,10 @@ use crate::reference::GtfsReference;
 
 /// Reads all records of one GTFS table from any reader.
 ///
+/// Which table is being read is decided by the entity type `T`
+/// alone; `file_label` only labels error messages, and matching the
+/// real table name is a convention, not a requirement.
+///
 /// # Arguments
 ///
 /// * `file_label` - Name used in error messages (e.g. "agency.txt")
@@ -95,7 +99,14 @@ pub fn read<T: CsvRecord, R: io::Read>(file_label: &str, reader: R) -> Result<Ve
 /// Reads one GTFS table from a file path - e.g. only `agency.txt`,
 /// without requiring the rest of the feed.
 ///
-/// The file name from the path is used in error messages.
+/// Which table is being read is decided by the entity type `T`
+/// alone - usually inferred from the assignment, or spelled
+/// explicitly as `read_path::<Agency>(path)`. The path is only the
+/// source of bytes: it may have any file name (the name goes into
+/// error messages), and nothing is guessed from it. Reading a file
+/// with the wrong type fails with a
+/// [`ParseErrorKind::MissingColumn`](crate::parsers::ParseErrorKind)
+/// error on the first required column that is absent.
 ///
 /// # Arguments
 ///
@@ -113,8 +124,11 @@ pub fn read<T: CsvRecord, R: io::Read>(file_label: &str, reader: R) -> Result<Ve
 /// use gtfs_rs::parsers::{ParseError, csv};
 ///
 /// fn main() -> Result<(), ParseError> {
+///     // the type annotation picks the table...
 ///     let agencies: Vec<Agency> = csv::read_path("feed/agency.txt")?;
-///     println!("{} agencies", agencies.len());
+///     // ...or spell it explicitly; the file name may be anything
+///     let backup = csv::read_path::<Agency>("backup/agencies_2026.csv")?;
+///     println!("{} + {} agencies", agencies.len(), backup.len());
 ///     Ok(())
 /// }
 /// ```
