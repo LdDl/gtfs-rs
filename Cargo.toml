@@ -15,9 +15,13 @@ categories = ["data-structures", "science::geo"]
 # CSV parsing of GTFS tables (gtfs_rs::parsers::csv); adds the `csv`
 # dependency
 parse = ["dep:csv"]
+# locations.geojson parsing (gtfs_rs::parsers::geojson); implies
+# `parse` and adds the `serde_json` dependency
+geojson = ["parse", "dep:serde_json"]
 
 [dependencies]
 csv = { version = "1", optional = true }
+serde_json = { version = "1", optional = true }
 
 [package.metadata.docs.rs]
 all-features = true
