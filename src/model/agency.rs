@@ -124,6 +124,18 @@ impl Agency {
     /// * `agency_name` - Full name of the agency
     /// * `agency_url` - URL of the agency website
     /// * `agency_timezone` - IANA timezone of the agency
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::Agency;
+    ///
+    /// let url = "https://transit.example";
+    /// let a = Agency::new("City Transit", url, "Europe/Moscow");
+    /// assert_eq!(a.agency_name, "City Transit");
+    /// assert_eq!(a.agency_timezone, "Europe/Moscow");
+    /// assert_eq!(a.agency_id, None);
+    /// ```
     pub fn new(agency_name: &str, agency_url: &str, agency_timezone: &str) -> Self {
         Agency {
             agency_id: None,
@@ -139,18 +151,49 @@ impl Agency {
     }
 
     /// Sets the agency identifier.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::Agency;
+    ///
+    /// let a = Agency::new("A", "https://a.example", "UTC")
+    ///     .with_id("CT");
+    /// assert_eq!(a.agency_id.as_deref(), Some("CT"));
+    /// ```
     pub fn with_id(mut self, agency_id: &str) -> Self {
         self.agency_id = Some(agency_id.to_string());
         self
     }
 
     /// Sets the primary language.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::Agency;
+    ///
+    /// let a = Agency::new("A", "https://a.example", "UTC")
+    ///     .with_lang("ru");
+    /// assert_eq!(a.agency_lang.as_deref(), Some("ru"));
+    /// ```
     pub fn with_lang(mut self, agency_lang: &str) -> Self {
         self.agency_lang = Some(agency_lang.to_string());
         self
     }
 
     /// Sets the voice telephone number.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::Agency;
+    ///
+    /// let a = Agency::new("A", "https://a.example", "UTC")
+    ///     .with_phone("+7 495 000-00-00");
+    /// let phone = a.agency_phone.as_deref();
+    /// assert_eq!(phone, Some("+7 495 000-00-00"));
+    /// ```
     pub fn with_phone(mut self, agency_phone: &str) -> Self {
         self.agency_phone = Some(agency_phone.to_string());
         self

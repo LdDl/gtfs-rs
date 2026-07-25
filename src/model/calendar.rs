@@ -77,6 +77,23 @@ impl Calendar {
     /// * `service_id` - Unique service identifier
     /// * `start_date` - First service day (inclusive)
     /// * `end_date` - Last service day (inclusive)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// fn main() -> Result<(), gtfs_rs::GtfsError> {
+    ///     use gtfs_rs::{Calendar, GtfsDate};
+    ///
+    ///     let cal = Calendar::new(
+    ///         "svc",
+    ///         GtfsDate::new(2026, 1, 1)?,
+    ///         GtfsDate::new(2026, 12, 31)?,
+    ///     );
+    ///     assert_eq!(cal.service_id, "svc");
+    ///     assert!(!cal.monday && !cal.sunday);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn new(service_id: &str, start_date: GtfsDate, end_date: GtfsDate) -> Self {
         Calendar {
             service_id: service_id.to_string(),
@@ -93,6 +110,24 @@ impl Calendar {
     }
 
     /// Activates Monday through Friday.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// fn main() -> Result<(), gtfs_rs::GtfsError> {
+    ///     use gtfs_rs::{Calendar, GtfsDate};
+    ///
+    ///     let cal = Calendar::new(
+    ///         "svc",
+    ///         GtfsDate::new(2026, 1, 1)?,
+    ///         GtfsDate::new(2026, 12, 31)?,
+    ///     )
+    ///     .with_weekdays();
+    ///     assert!(cal.monday && cal.friday);
+    ///     assert!(!cal.saturday);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn with_weekdays(mut self) -> Self {
         self.monday = true;
         self.tuesday = true;
@@ -103,6 +138,24 @@ impl Calendar {
     }
 
     /// Activates Saturday and Sunday.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// fn main() -> Result<(), gtfs_rs::GtfsError> {
+    ///     use gtfs_rs::{Calendar, GtfsDate};
+    ///
+    ///     let cal = Calendar::new(
+    ///         "svc",
+    ///         GtfsDate::new(2026, 1, 1)?,
+    ///         GtfsDate::new(2026, 12, 31)?,
+    ///     )
+    ///     .with_weekends();
+    ///     assert!(cal.saturday && cal.sunday);
+    ///     assert!(!cal.monday);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn with_weekends(mut self) -> Self {
         self.saturday = true;
         self.sunday = true;
@@ -110,11 +163,46 @@ impl Calendar {
     }
 
     /// Activates all seven days.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// fn main() -> Result<(), gtfs_rs::GtfsError> {
+    ///     use gtfs_rs::{Calendar, GtfsDate};
+    ///
+    ///     let cal = Calendar::new(
+    ///         "svc",
+    ///         GtfsDate::new(2026, 1, 1)?,
+    ///         GtfsDate::new(2026, 12, 31)?,
+    ///     )
+    ///     .with_all_days();
+    ///     assert!(cal.monday && cal.saturday && cal.sunday);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn with_all_days(self) -> Self {
         self.with_weekdays().with_weekends()
     }
 
     /// Returns whether the service runs on the given day of the week.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// fn main() -> Result<(), gtfs_rs::GtfsError> {
+    ///     use gtfs_rs::{Calendar, GtfsDate, Weekday};
+    ///
+    ///     let cal = Calendar::new(
+    ///         "svc",
+    ///         GtfsDate::new(2026, 1, 1)?,
+    ///         GtfsDate::new(2026, 12, 31)?,
+    ///     )
+    ///     .with_weekends();
+    ///     assert!(cal.runs_on(Weekday::Saturday));
+    ///     assert!(!cal.runs_on(Weekday::Monday));
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn runs_on(&self, weekday: Weekday) -> bool {
         match weekday {
             Weekday::Monday => self.monday,
@@ -131,6 +219,25 @@ impl Calendar {
     /// active day of the week. Exceptions from `calendar_dates.txt`
     /// are not considered; see
     /// [`GtfsReference::is_service_active`](crate::GtfsReference::is_service_active).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// fn main() -> Result<(), gtfs_rs::GtfsError> {
+    ///     use gtfs_rs::{Calendar, GtfsDate};
+    ///
+    ///     let cal = Calendar::new(
+    ///         "svc",
+    ///         GtfsDate::new(2026, 1, 1)?,
+    ///         GtfsDate::new(2026, 12, 31)?,
+    ///     )
+    ///     .with_weekdays();
+    ///     // 2026-07-24 is a Friday, 2026-07-25 a Saturday
+    ///     assert!(cal.is_active_on(&GtfsDate::new(2026, 7, 24)?));
+    ///     assert!(!cal.is_active_on(&GtfsDate::new(2026, 7, 25)?));
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn is_active_on(&self, date: &GtfsDate) -> bool {
         *date >= self.start_date && *date <= self.end_date && self.runs_on(date.weekday())
     }
@@ -189,6 +296,23 @@ impl CalendarDate {
     /// * `service_id` - Service the exception applies to
     /// * `date` - Date of the exception
     /// * `exception_type` - Added or removed
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// fn main() -> Result<(), gtfs_rs::GtfsError> {
+    ///     use gtfs_rs::{CalendarDate, ExceptionType, GtfsDate};
+    ///
+    ///     let holiday = CalendarDate::new(
+    ///         "svc",
+    ///         GtfsDate::new(2026, 1, 1)?,
+    ///         ExceptionType::Removed,
+    ///     );
+    ///     assert_eq!(holiday.service_id, "svc");
+    ///     assert_eq!(holiday.exception_type, ExceptionType::Removed);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn new(service_id: &str, date: GtfsDate, exception_type: ExceptionType) -> Self {
         CalendarDate {
             service_id: service_id.to_string(),

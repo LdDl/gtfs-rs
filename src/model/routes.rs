@@ -75,6 +75,15 @@ impl RouteType {
     }
 
     /// Returns the numeric code used in GTFS files.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::RouteType;
+    ///
+    /// assert_eq!(RouteType::Bus.code(), 3);
+    /// assert_eq!(RouteType::Extended(800).code(), 800);
+    /// ```
     pub fn code(self) -> i32 {
         match self {
             RouteType::Tram => 0,
@@ -274,6 +283,16 @@ impl Route {
     ///
     /// * `route_id` - Unique route identifier
     /// * `route_type` - Type of transportation used on the route
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::{Route, RouteType};
+    ///
+    /// let route = Route::new("L1", RouteType::Bus);
+    /// assert_eq!(route.route_id, "L1");
+    /// assert_eq!(route.route_type, RouteType::Bus);
+    /// ```
     pub fn new(route_id: &str, route_type: RouteType) -> Self {
         Route {
             route_id: route_id.to_string(),
@@ -294,18 +313,49 @@ impl Route {
     }
 
     /// Sets the short display name.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::{Route, RouteType};
+    ///
+    /// let route = Route::new("L1", RouteType::Bus)
+    ///     .with_short_name("100X");
+    /// assert_eq!(route.route_short_name.as_deref(), Some("100X"));
+    /// ```
     pub fn with_short_name(mut self, route_short_name: &str) -> Self {
         self.route_short_name = Some(route_short_name.to_string());
         self
     }
 
     /// Sets the full display name.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::{Route, RouteType};
+    ///
+    /// let route = Route::new("L1", RouteType::Bus)
+    ///     .with_long_name("Airport Express");
+    /// let name = route.route_long_name.as_deref();
+    /// assert_eq!(name, Some("Airport Express"));
+    /// ```
     pub fn with_long_name(mut self, route_long_name: &str) -> Self {
         self.route_long_name = Some(route_long_name.to_string());
         self
     }
 
     /// Sets the operating agency.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::{Route, RouteType};
+    ///
+    /// let route = Route::new("L1", RouteType::Bus)
+    ///     .with_agency_id("metro");
+    /// assert_eq!(route.agency_id.as_deref(), Some("metro"));
+    /// ```
     pub fn with_agency_id(mut self, agency_id: &str) -> Self {
         self.agency_id = Some(agency_id.to_string());
         self
@@ -318,6 +368,18 @@ impl Route {
     ///
     /// * `route_color` - Background color (e.g. "FFD700")
     /// * `route_text_color` - Legible text color (e.g. "000000")
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::{Route, RouteType};
+    ///
+    /// let route = Route::new("L1", RouteType::Bus)
+    ///     .with_colors("FFD700", "000000");
+    /// assert_eq!(route.route_color.as_deref(), Some("FFD700"));
+    /// let text = route.route_text_color.as_deref();
+    /// assert_eq!(text, Some("000000"));
+    /// ```
     pub fn with_colors(mut self, route_color: &str, route_text_color: &str) -> Self {
         self.route_color = Some(route_color.to_string());
         self.route_text_color = Some(route_text_color.to_string());

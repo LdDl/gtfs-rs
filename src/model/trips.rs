@@ -191,6 +191,17 @@ impl Trip {
     /// * `trip_id` - Unique trip identifier
     /// * `route_id` - Parent route identifier
     /// * `service_id` - Service calendar identifier
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::Trip;
+    ///
+    /// let trip = Trip::new("t0", "L1", "weekday");
+    /// assert_eq!(trip.trip_id, "t0");
+    /// assert_eq!(trip.route_id, "L1");
+    /// assert_eq!(trip.service_id, "weekday");
+    /// ```
     pub fn new(trip_id: &str, route_id: &str, service_id: &str) -> Self {
         Trip {
             route_id: route_id.to_string(),
@@ -210,30 +221,80 @@ impl Trip {
     }
 
     /// Sets the direction of travel.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::{Direction, Trip};
+    ///
+    /// let trip = Trip::new("t0", "L1", "weekday")
+    ///     .with_direction(Direction::Inbound);
+    /// assert_eq!(trip.direction_id, Some(Direction::Inbound));
+    /// ```
     pub fn with_direction(mut self, direction: Direction) -> Self {
         self.direction_id = Some(direction);
         self
     }
 
     /// Sets the destination sign text.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::Trip;
+    ///
+    /// let trip = Trip::new("t0", "L1", "weekday")
+    ///     .with_headsign("Airport");
+    /// assert_eq!(trip.trip_headsign.as_deref(), Some("Airport"));
+    /// ```
     pub fn with_headsign(mut self, trip_headsign: &str) -> Self {
         self.trip_headsign = Some(trip_headsign.to_string());
         self
     }
 
     /// Sets the rider-facing short name.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::Trip;
+    ///
+    /// let trip = Trip::new("t0", "L1", "weekday")
+    ///     .with_short_name("501");
+    /// assert_eq!(trip.trip_short_name.as_deref(), Some("501"));
+    /// ```
     pub fn with_short_name(mut self, trip_short_name: &str) -> Self {
         self.trip_short_name = Some(trip_short_name.to_string());
         self
     }
 
     /// Sets the block of sequential trips.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::Trip;
+    ///
+    /// let trip = Trip::new("t0", "L1", "weekday")
+    ///     .with_block_id("b1");
+    /// assert_eq!(trip.block_id.as_deref(), Some("b1"));
+    /// ```
     pub fn with_block_id(mut self, block_id: &str) -> Self {
         self.block_id = Some(block_id.to_string());
         self
     }
 
     /// Sets the geospatial shape.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::Trip;
+    ///
+    /// let trip = Trip::new("t0", "L1", "weekday")
+    ///     .with_shape_id("shp1");
+    /// assert_eq!(trip.shape_id.as_deref(), Some("shp1"));
+    /// ```
     pub fn with_shape_id(mut self, shape_id: &str) -> Self {
         self.shape_id = Some(shape_id.to_string());
         self

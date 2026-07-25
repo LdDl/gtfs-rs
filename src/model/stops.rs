@@ -303,6 +303,17 @@ impl Stop {
     /// # Arguments
     ///
     /// * `stop_id` - Unique stop identifier
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::{LocationType, Stop};
+    ///
+    /// let stop = Stop::new("S1");
+    /// assert_eq!(stop.stop_id, "S1");
+    /// let default_type = LocationType::StopOrPlatform;
+    /// assert_eq!(stop.location_type, default_type);
+    /// ```
     pub fn new(stop_id: &str) -> Self {
         Stop {
             stop_id: stop_id.to_string(),
@@ -325,6 +336,15 @@ impl Stop {
     }
 
     /// Sets the display name.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::Stop;
+    ///
+    /// let stop = Stop::new("S1").with_name("Central");
+    /// assert_eq!(stop.stop_name.as_deref(), Some("Central"));
+    /// ```
     pub fn with_name(mut self, stop_name: &str) -> Self {
         self.stop_name = Some(stop_name.to_string());
         self
@@ -336,6 +356,17 @@ impl Stop {
     ///
     /// * `lat` - WGS84 latitude
     /// * `lon` - WGS84 longitude
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::Stop;
+    ///
+    /// let stop = Stop::new("S1")
+    ///     .with_coordinates(55.751, 37.617);
+    /// assert_eq!(stop.stop_lat, Some(55.751));
+    /// assert_eq!(stop.stop_lon, Some(37.617));
+    /// ```
     pub fn with_coordinates(mut self, lat: f64, lon: f64) -> Self {
         self.stop_lat = Some(lat);
         self.stop_lon = Some(lon);
@@ -343,24 +374,66 @@ impl Stop {
     }
 
     /// Sets the location type.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::{LocationType, Stop};
+    ///
+    /// let station = Stop::new("S1")
+    ///     .with_location_type(LocationType::Station);
+    /// let kind = station.location_type;
+    /// assert_eq!(kind, LocationType::Station);
+    /// ```
     pub fn with_location_type(mut self, location_type: LocationType) -> Self {
         self.location_type = location_type;
         self
     }
 
     /// Sets the parent station.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::Stop;
+    ///
+    /// let platform = Stop::new("S1_2")
+    ///     .with_parent_station("S1");
+    /// let parent = platform.parent_station.as_deref();
+    /// assert_eq!(parent, Some("S1"));
+    /// ```
     pub fn with_parent_station(mut self, parent_station: &str) -> Self {
         self.parent_station = Some(parent_station.to_string());
         self
     }
 
     /// Sets the fare zone identifier.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::Stop;
+    ///
+    /// let stop = Stop::new("S1").with_zone_id("Z1");
+    /// assert_eq!(stop.zone_id.as_deref(), Some("Z1"));
+    /// ```
     pub fn with_zone_id(mut self, zone_id: &str) -> Self {
         self.zone_id = Some(zone_id.to_string());
         self
     }
 
     /// Sets the platform code.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::Stop;
+    ///
+    /// let platform = Stop::new("S1_2")
+    ///     .with_platform_code("2");
+    /// let code = platform.platform_code.as_deref();
+    /// assert_eq!(code, Some("2"));
+    /// ```
     pub fn with_platform_code(mut self, platform_code: &str) -> Self {
         self.platform_code = Some(platform_code.to_string());
         self

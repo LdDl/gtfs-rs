@@ -346,6 +346,17 @@ impl StopTime {
     /// * `stop_id` - Visited stop identifier
     /// * `stop_sequence` - Order of the stop within the trip
     /// * `time` - Arrival = departure time, seconds since midnight
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::StopTime;
+    ///
+    /// let st = StopTime::new("t0", "A", 1, 8 * 3600);
+    /// assert_eq!(st.arrival_time, Some(28800));
+    /// assert_eq!(st.departure_time, Some(28800));
+    /// assert_eq!(st.stop_id.as_deref(), Some("A"));
+    /// ```
     pub fn new(trip_id: &str, stop_id: &str, stop_sequence: u32, time: u32) -> Self {
         StopTime {
             trip_id: trip_id.to_string(),
@@ -375,6 +386,17 @@ impl StopTime {
     ///
     /// * `arrival` - Arrival time, seconds since midnight
     /// * `departure` - Departure time, seconds since midnight
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::StopTime;
+    ///
+    /// let st = StopTime::new("t0", "A", 1, 8 * 3600)
+    ///     .with_times(8 * 3600, 8 * 3600 + 30);
+    /// assert_eq!(st.arrival_time, Some(28800));
+    /// assert_eq!(st.departure_time, Some(28830));
+    /// ```
     pub fn with_times(mut self, arrival: u32, departure: u32) -> Self {
         self.arrival_time = Some(arrival);
         self.departure_time = Some(departure);
@@ -382,6 +404,16 @@ impl StopTime {
     }
 
     /// Sets the destination sign text from this stop onwards.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::StopTime;
+    ///
+    /// let st = StopTime::new("t0", "A", 1, 8 * 3600)
+    ///     .with_headsign("Downtown");
+    /// assert_eq!(st.stop_headsign.as_deref(), Some("Downtown"));
+    /// ```
     pub fn with_headsign(mut self, stop_headsign: &str) -> Self {
         self.stop_headsign = Some(stop_headsign.to_string());
         self
@@ -393,6 +425,20 @@ impl StopTime {
     ///
     /// * `pickup_type` - Pickup method at this stop
     /// * `drop_off_type` - Drop-off method at this stop
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::{PickupDropOffType, StopTime};
+    ///
+    /// let st = StopTime::new("t0", "A", 1, 8 * 3600)
+    ///     .with_pickup_drop_off(
+    ///         PickupDropOffType::PhoneAgency,
+    ///         PickupDropOffType::NotAvailable,
+    ///     );
+    /// assert_eq!(st.pickup_type, PickupDropOffType::PhoneAgency);
+    /// assert_eq!(st.drop_off_type, PickupDropOffType::NotAvailable);
+    /// ```
     pub fn with_pickup_drop_off(
         mut self,
         pickup_type: PickupDropOffType,
@@ -409,6 +455,17 @@ impl StopTime {
     ///
     /// * `start` - Window start, seconds since midnight
     /// * `end` - Window end, seconds since midnight
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::StopTime;
+    ///
+    /// let st = StopTime::new("t0", "A", 1, 8 * 3600)
+    ///     .with_pickup_drop_off_window(9 * 3600, 17 * 3600);
+    /// assert_eq!(st.start_pickup_drop_off_window, Some(32400));
+    /// assert_eq!(st.end_pickup_drop_off_window, Some(61200));
+    /// ```
     pub fn with_pickup_drop_off_window(mut self, start: u32, end: u32) -> Self {
         self.start_pickup_drop_off_window = Some(start);
         self.end_pickup_drop_off_window = Some(end);

@@ -69,6 +69,19 @@ impl GtfsDate {
     ///
     /// Returns [`GtfsError::InvalidDate`] if the combination is not
     /// an existing calendar date.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// fn main() -> Result<(), gtfs_rs::GtfsError> {
+    ///     use gtfs_rs::GtfsDate;
+    ///
+    ///     let date = GtfsDate::new(2026, 7, 24)?;
+    ///     assert_eq!(date.to_string(), "20260724");
+    ///     assert!(GtfsDate::new(2026, 2, 30).is_err());
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn new(year: u16, month: u8, day: u8) -> Result<Self, GtfsError> {
         if month == 0 || month > 12 || day == 0 || day > days_in_month(year, month) {
             return Err(GtfsError::InvalidDate {
@@ -88,6 +101,19 @@ impl GtfsDate {
     ///
     /// Returns [`GtfsError::InvalidDate`] if the string is not eight
     /// digits or encodes a nonexistent date.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// fn main() -> Result<(), gtfs_rs::GtfsError> {
+    ///     use gtfs_rs::GtfsDate;
+    ///
+    ///     let date = GtfsDate::parse("20260724")?;
+    ///     assert_eq!(date, GtfsDate::new(2026, 7, 24)?);
+    ///     assert!(GtfsDate::parse("2026-07-24").is_err());
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn parse(value: &str) -> Result<Self, GtfsError> {
         let invalid = || GtfsError::InvalidDate {
             value: value.to_string(),
@@ -104,6 +130,18 @@ impl GtfsDate {
 
     /// Returns the day of the week (Sakamoto's algorithm).
     /// Ref: <https://www.geeksforgeeks.org/dsa/tomohiko-sakamotos-algorithm-finding-day-week/>
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// fn main() -> Result<(), gtfs_rs::GtfsError> {
+    ///     use gtfs_rs::{GtfsDate, Weekday};
+    ///
+    ///     let date = GtfsDate::new(2026, 7, 24)?;
+    ///     assert_eq!(date.weekday(), Weekday::Friday);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn weekday(&self) -> Weekday {
         const T: [i32; 12] = [0, 3, 2, 5, 0, 3, 5, 1, 4, 6, 2, 4];
         let mut y = i32::from(self.year);

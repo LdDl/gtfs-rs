@@ -139,11 +139,35 @@ impl CurrencyAmount {
 
     /// Returns the integer mantissa; the amount is
     /// `mantissa / 10^scale`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// fn main() -> Result<(), gtfs_rs::GtfsError> {
+    ///     use gtfs_rs::CurrencyAmount;
+    ///
+    ///     let fare = CurrencyAmount::new(250, 2)?;
+    ///     assert_eq!(fare.mantissa(), 250);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn mantissa(&self) -> i64 {
         self.mantissa
     }
 
     /// Returns the number of decimal places.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// fn main() -> Result<(), gtfs_rs::GtfsError> {
+    ///     use gtfs_rs::CurrencyAmount;
+    ///
+    ///     let fare = CurrencyAmount::parse("2.50")?;
+    ///     assert_eq!(fare.scale(), 2);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn scale(&self) -> u8 {
         self.scale
     }

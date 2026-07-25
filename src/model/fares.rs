@@ -78,6 +78,18 @@ pub enum FareTransfers {
 impl FareTransfers {
     /// Parses the numeric code used in GTFS files; `None` (an empty
     /// field) means unlimited transfers.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::FareTransfers;
+    ///
+    /// let unlimited = FareTransfers::from_code(None);
+    /// assert_eq!(unlimited, Some(FareTransfers::Unlimited));
+    /// let once = FareTransfers::from_code(Some(1));
+    /// assert_eq!(once, Some(FareTransfers::Once));
+    /// assert_eq!(FareTransfers::from_code(Some(9)), None);
+    /// ```
     pub fn from_code(code: Option<i32>) -> Option<Self> {
         match code {
             Some(0) => Some(FareTransfers::NotAllowed),
@@ -90,6 +102,16 @@ impl FareTransfers {
 
     /// Returns the numeric code used in GTFS files; `None` means the
     /// field is left empty (unlimited transfers).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::FareTransfers;
+    ///
+    /// assert_eq!(FareTransfers::NotAllowed.code(), Some(0));
+    /// assert_eq!(FareTransfers::Once.code(), Some(1));
+    /// assert_eq!(FareTransfers::Unlimited.code(), None);
+    /// ```
     pub fn code(self) -> Option<i32> {
         match self {
             FareTransfers::NotAllowed => Some(0),
@@ -166,6 +188,26 @@ impl FareAttributeV1 {
     /// * `price` - Fare price
     /// * `currency_type` - ISO 4217 currency code
     /// * `payment_method` - When the fare must be paid
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// fn main() -> Result<(), gtfs_rs::GtfsError> {
+    ///     use gtfs_rs::{
+    ///         CurrencyAmount, FareAttributeV1, FareTransfers, PaymentMethod,
+    ///     };
+    ///
+    ///     let fare = FareAttributeV1::new(
+    ///         "base",
+    ///         CurrencyAmount::parse("57.00")?,
+    ///         "RUB",
+    ///         PaymentMethod::OnBoard,
+    ///     );
+    ///     assert_eq!(fare.fare_id, "base");
+    ///     assert_eq!(fare.transfers, FareTransfers::Unlimited);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn new(
         fare_id: &str,
         price: CurrencyAmount,
@@ -184,6 +226,26 @@ impl FareAttributeV1 {
     }
 
     /// Sets the permitted number of transfers.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// fn main() -> Result<(), gtfs_rs::GtfsError> {
+    ///     use gtfs_rs::{
+    ///         CurrencyAmount, FareAttributeV1, FareTransfers, PaymentMethod,
+    ///     };
+    ///
+    ///     let fare = FareAttributeV1::new(
+    ///         "base",
+    ///         CurrencyAmount::parse("57.00")?,
+    ///         "RUB",
+    ///         PaymentMethod::OnBoard,
+    ///     )
+    ///     .with_transfers(FareTransfers::Once);
+    ///     assert_eq!(fare.transfers, FareTransfers::Once);
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn with_transfers(mut self, transfers: FareTransfers) -> Self {
         self.transfers = transfers;
         self
@@ -234,6 +296,16 @@ impl FareRuleV1 {
     /// # Arguments
     ///
     /// * `fare_id` - Fare class the rule applies to
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::FareRuleV1;
+    ///
+    /// let rule = FareRuleV1::new("base");
+    /// assert_eq!(rule.fare_id, "base");
+    /// assert_eq!(rule.route_id, None);
+    /// ```
     pub fn new(fare_id: &str) -> Self {
         FareRuleV1 {
             fare_id: fare_id.to_string(),
@@ -245,6 +317,15 @@ impl FareRuleV1 {
     }
 
     /// Restricts the rule to a route.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::FareRuleV1;
+    ///
+    /// let rule = FareRuleV1::new("base").with_route_id("R1");
+    /// assert_eq!(rule.route_id.as_deref(), Some("R1"));
+    /// ```
     pub fn with_route_id(mut self, route_id: &str) -> Self {
         self.route_id = Some(route_id.to_string());
         self
@@ -256,6 +337,17 @@ impl FareRuleV1 {
     ///
     /// * `origin_id` - Origin zone
     /// * `destination_id` - Destination zone
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::FareRuleV1;
+    ///
+    /// let rule = FareRuleV1::new("base")
+    ///     .with_origin_destination("zone_a", "zone_b");
+    /// assert_eq!(rule.origin_id.as_deref(), Some("zone_a"));
+    /// assert_eq!(rule.destination_id.as_deref(), Some("zone_b"));
+    /// ```
     pub fn with_origin_destination(mut self, origin_id: &str, destination_id: &str) -> Self {
         self.origin_id = Some(origin_id.to_string());
         self.destination_id = Some(destination_id.to_string());
@@ -304,6 +396,16 @@ impl Timeframe {
     ///
     /// * `timeframe_group_id` - Timeframe group identifier
     /// * `service_id` - Service dates the timeframe applies on
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::Timeframe;
+    ///
+    /// let frame = Timeframe::new("peak", "weekday");
+    /// assert_eq!(frame.service_id, "weekday");
+    /// assert_eq!(frame.start_time, None);
+    /// ```
     pub fn new(timeframe_group_id: &str, service_id: &str) -> Self {
         Timeframe {
             timeframe_group_id: timeframe_group_id.to_string(),
@@ -319,6 +421,17 @@ impl Timeframe {
     ///
     /// * `start_time` - Period start, seconds since midnight (inclusive)
     /// * `end_time` - Period end, seconds since midnight (exclusive)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::Timeframe;
+    ///
+    /// let frame = Timeframe::new("peak", "weekday")
+    ///     .with_period(7 * 3600, 10 * 3600);
+    /// assert_eq!(frame.start_time, Some(25_200));
+    /// assert_eq!(frame.end_time, Some(36_000));
+    /// ```
     pub fn with_period(mut self, start_time: u32, end_time: u32) -> Self {
         self.start_time = Some(start_time);
         self.end_time = Some(end_time);
@@ -363,6 +476,16 @@ impl RiderCategory {
     ///
     /// * `rider_category_id` - Unique rider category identifier
     /// * `rider_category_name` - Rider-facing name
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::RiderCategory;
+    ///
+    /// let adult = RiderCategory::new("adult", "Adult");
+    /// assert_eq!(adult.rider_category_name, "Adult");
+    /// assert!(!adult.is_default_fare_category);
+    /// ```
     pub fn new(rider_category_id: &str, rider_category_name: &str) -> Self {
         RiderCategory {
             rider_category_id: rider_category_id.to_string(),
@@ -373,6 +496,15 @@ impl RiderCategory {
     }
 
     /// Marks the category as the default fare category.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::RiderCategory;
+    ///
+    /// let adult = RiderCategory::new("adult", "Adult").as_default();
+    /// assert!(adult.is_default_fare_category);
+    /// ```
     pub fn as_default(mut self) -> Self {
         self.is_default_fare_category = true;
         self
@@ -431,6 +563,16 @@ impl FareMedia {
     ///
     /// * `fare_media_id` - Unique fare media identifier
     /// * `fare_media_type` - Type of the fare media
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::{FareMedia, FareMediaType};
+    ///
+    /// let card = FareMedia::new("card", FareMediaType::TransitCard);
+    /// assert_eq!(card.fare_media_id, "card");
+    /// assert_eq!(card.fare_media_name, None);
+    /// ```
     pub fn new(fare_media_id: &str, fare_media_type: FareMediaType) -> Self {
         FareMedia {
             fare_media_id: fare_media_id.to_string(),
@@ -440,6 +582,16 @@ impl FareMedia {
     }
 
     /// Sets the rider-facing name.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::{FareMedia, FareMediaType};
+    ///
+    /// let card = FareMedia::new("card", FareMediaType::TransitCard)
+    ///     .with_name("Troika");
+    /// assert_eq!(card.fare_media_name.as_deref(), Some("Troika"));
+    /// ```
     pub fn with_name(mut self, fare_media_name: &str) -> Self {
         self.fare_media_name = Some(fare_media_name.to_string());
         self
@@ -506,6 +658,20 @@ impl FareProduct {
     /// * `fare_product_id` - Fare product identifier
     /// * `amount` - Cost of the product
     /// * `currency` - ISO 4217 currency code
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// fn main() -> Result<(), gtfs_rs::GtfsError> {
+    ///     use gtfs_rs::{CurrencyAmount, FareProduct};
+    ///
+    ///     let amount = CurrencyAmount::parse("57.00")?;
+    ///     let single = FareProduct::new("single", amount, "RUB");
+    ///     assert_eq!(single.fare_product_id, "single");
+    ///     assert_eq!(single.currency, "RUB");
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn new(fare_product_id: &str, amount: CurrencyAmount, currency: &str) -> Self {
         FareProduct {
             fare_product_id: fare_product_id.to_string(),
@@ -518,18 +684,60 @@ impl FareProduct {
     }
 
     /// Sets the rider-facing name.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// fn main() -> Result<(), gtfs_rs::GtfsError> {
+    ///     use gtfs_rs::{CurrencyAmount, FareProduct};
+    ///
+    ///     let amount = CurrencyAmount::parse("57.00")?;
+    ///     let single = FareProduct::new("single", amount, "RUB")
+    ///         .with_name("Single");
+    ///     assert_eq!(single.fare_product_name.as_deref(), Some("Single"));
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn with_name(mut self, fare_product_name: &str) -> Self {
         self.fare_product_name = Some(fare_product_name.to_string());
         self
     }
 
     /// Restricts the product to a rider category.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// fn main() -> Result<(), gtfs_rs::GtfsError> {
+    ///     use gtfs_rs::{CurrencyAmount, FareProduct};
+    ///
+    ///     let amount = CurrencyAmount::parse("57.00")?;
+    ///     let single = FareProduct::new("single", amount, "RUB")
+    ///         .with_rider_category("adult");
+    ///     assert_eq!(single.rider_category_id.as_deref(), Some("adult"));
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn with_rider_category(mut self, rider_category_id: &str) -> Self {
         self.rider_category_id = Some(rider_category_id.to_string());
         self
     }
 
     /// Restricts the product to a fare media.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// fn main() -> Result<(), gtfs_rs::GtfsError> {
+    ///     use gtfs_rs::{CurrencyAmount, FareProduct};
+    ///
+    ///     let amount = CurrencyAmount::parse("57.00")?;
+    ///     let single = FareProduct::new("single", amount, "RUB")
+    ///         .with_fare_media("card");
+    ///     assert_eq!(single.fare_media_id.as_deref(), Some("card"));
+    ///     Ok(())
+    /// }
+    /// ```
     pub fn with_fare_media(mut self, fare_media_id: &str) -> Self {
         self.fare_media_id = Some(fare_media_id.to_string());
         self
@@ -702,6 +910,16 @@ impl FareLegRule {
     /// # Arguments
     ///
     /// * `fare_product_id` - Fare product that prices the leg
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::FareLegRule;
+    ///
+    /// let leg = FareLegRule::new("single");
+    /// assert_eq!(leg.fare_product_id, "single");
+    /// assert_eq!(leg.network_id, None);
+    /// ```
     pub fn new(fare_product_id: &str) -> Self {
         FareLegRule {
             leg_group_id: None,
@@ -716,12 +934,30 @@ impl FareLegRule {
     }
 
     /// Sets the leg group identifier.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::FareLegRule;
+    ///
+    /// let leg = FareLegRule::new("single").with_leg_group("metro_leg");
+    /// assert_eq!(leg.leg_group_id.as_deref(), Some("metro_leg"));
+    /// ```
     pub fn with_leg_group(mut self, leg_group_id: &str) -> Self {
         self.leg_group_id = Some(leg_group_id.to_string());
         self
     }
 
     /// Restricts the rule to a route network.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::FareLegRule;
+    ///
+    /// let leg = FareLegRule::new("single").with_network("metro");
+    /// assert_eq!(leg.network_id.as_deref(), Some("metro"));
+    /// ```
     pub fn with_network(mut self, network_id: &str) -> Self {
         self.network_id = Some(network_id.to_string());
         self
@@ -733,6 +969,17 @@ impl FareLegRule {
     ///
     /// * `from_area_id` - Area the leg must start in
     /// * `to_area_id` - Area the leg must end in
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::FareLegRule;
+    ///
+    /// let leg = FareLegRule::new("single")
+    ///     .with_areas("zone_a", "zone_b");
+    /// assert_eq!(leg.from_area_id.as_deref(), Some("zone_a"));
+    /// assert_eq!(leg.to_area_id.as_deref(), Some("zone_b"));
+    /// ```
     pub fn with_areas(mut self, from_area_id: &str, to_area_id: &str) -> Self {
         self.from_area_id = Some(from_area_id.to_string());
         self.to_area_id = Some(to_area_id.to_string());
@@ -787,6 +1034,16 @@ impl FareLegJoinRule {
     ///
     /// * `from_network_id` - Network of the pre-transfer leg
     /// * `to_network_id` - Network of the post-transfer leg
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::FareLegJoinRule;
+    ///
+    /// let join = FareLegJoinRule::new("net_a", "net_b");
+    /// assert_eq!(join.from_network_id, "net_a");
+    /// assert_eq!(join.from_stop_id, None);
+    /// ```
     pub fn new(from_network_id: &str, to_network_id: &str) -> Self {
         FareLegJoinRule {
             from_network_id: from_network_id.to_string(),
@@ -802,6 +1059,17 @@ impl FareLegJoinRule {
     ///
     /// * `from_stop_id` - Stop the pre-transfer leg must end at
     /// * `to_stop_id` - Stop the post-transfer leg must start at
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::FareLegJoinRule;
+    ///
+    /// let join = FareLegJoinRule::new("net_a", "net_b")
+    ///     .between_stops("S1", "S2");
+    /// assert_eq!(join.from_stop_id.as_deref(), Some("S1"));
+    /// assert_eq!(join.to_stop_id.as_deref(), Some("S2"));
+    /// ```
     pub fn between_stops(mut self, from_stop_id: &str, to_stop_id: &str) -> Self {
         self.from_stop_id = Some(from_stop_id.to_string());
         self.to_stop_id = Some(to_stop_id.to_string());
@@ -933,6 +1201,16 @@ impl FareTransferRule {
     ///
     /// * `fare_transfer_type` - How the cost of the transfer is
     ///   computed
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::{FareTransferRule, FareTransferType};
+    ///
+    /// let rule = FareTransferRule::new(FareTransferType::TransferOnly);
+    /// assert_eq!(rule.fare_transfer_type, FareTransferType::TransferOnly);
+    /// assert_eq!(rule.fare_product_id, None);
+    /// ```
     pub fn new(fare_transfer_type: FareTransferType) -> Self {
         FareTransferRule {
             from_leg_group_id: None,
@@ -951,6 +1229,17 @@ impl FareTransferRule {
     ///
     /// * `from_leg_group_id` - Leg group of the pre-transfer leg
     /// * `to_leg_group_id` - Leg group of the post-transfer leg
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::{FareTransferRule, FareTransferType};
+    ///
+    /// let rule = FareTransferRule::new(FareTransferType::TransferOnly)
+    ///     .between_leg_groups("metro_leg", "bus_leg");
+    /// assert_eq!(rule.from_leg_group_id.as_deref(), Some("metro_leg"));
+    /// assert_eq!(rule.to_leg_group_id.as_deref(), Some("bus_leg"));
+    /// ```
     pub fn between_leg_groups(mut self, from_leg_group_id: &str, to_leg_group_id: &str) -> Self {
         self.from_leg_group_id = Some(from_leg_group_id.to_string());
         self.to_leg_group_id = Some(to_leg_group_id.to_string());
@@ -963,6 +1252,18 @@ impl FareTransferRule {
     ///
     /// * `duration_limit` - Limit in seconds
     /// * `duration_limit_type` - How the limit is measured
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::{DurationLimitType, FareTransferRule, FareTransferType};
+    ///
+    /// let kind = DurationLimitType::DepartureToArrival;
+    /// let rule = FareTransferRule::new(FareTransferType::TransferOnly)
+    ///     .with_duration_limit(90 * 60, kind);
+    /// assert_eq!(rule.duration_limit, Some(5400));
+    /// assert_eq!(rule.duration_limit_type, Some(kind));
+    /// ```
     pub fn with_duration_limit(
         mut self,
         duration_limit: u32,
@@ -974,6 +1275,16 @@ impl FareTransferRule {
     }
 
     /// Sets the fare product that prices the transfer.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::{FareTransferRule, FareTransferType};
+    ///
+    /// let rule = FareTransferRule::new(FareTransferType::TransferOnly)
+    ///     .with_fare_product("transfer_fee");
+    /// assert_eq!(rule.fare_product_id.as_deref(), Some("transfer_fee"));
+    /// ```
     pub fn with_fare_product(mut self, fare_product_id: &str) -> Self {
         self.fare_product_id = Some(fare_product_id.to_string());
         self
