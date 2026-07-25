@@ -31,6 +31,16 @@ impl Area {
     /// # Arguments
     ///
     /// * `area_id` - Unique area identifier
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::Area;
+    ///
+    /// let zone = Area::new("zone_a");
+    /// assert_eq!(zone.area_id, "zone_a");
+    /// assert_eq!(zone.area_name, None);
+    /// ```
     pub fn new(area_id: &str) -> Self {
         Area {
             area_id: area_id.to_string(),
@@ -39,6 +49,15 @@ impl Area {
     }
 
     /// Sets the rider-facing name.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::Area;
+    ///
+    /// let zone = Area::new("zone_a").with_name("Zone A");
+    /// assert_eq!(zone.area_name.as_deref(), Some("Zone A"));
+    /// ```
     pub fn with_name(mut self, area_name: &str) -> Self {
         self.area_name = Some(area_name.to_string());
         self
@@ -71,6 +90,16 @@ impl StopArea {
     ///
     /// * `area_id` - Area the stop belongs to
     /// * `stop_id` - Assigned stop or station
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::StopArea;
+    ///
+    /// let assignment = StopArea::new("zone_a", "S1");
+    /// assert_eq!(assignment.area_id, "zone_a");
+    /// assert_eq!(assignment.stop_id, "S1");
+    /// ```
     pub fn new(area_id: &str, stop_id: &str) -> Self {
         StopArea {
             area_id: area_id.to_string(),
