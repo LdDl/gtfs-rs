@@ -40,6 +40,11 @@
 //! so downstream code can simply import `gtfs_rs::Stop` instead of
 //! the full module path.
 //!
+//! # Cargo features
+//!
+//! - `parse` (off by default) - the `parsers` module with CSV
+//!   readers for the dataset tables; adds the `csv` dependency.
+//!
 //! # Examples
 //!
 //! ```
@@ -60,6 +65,8 @@
 mod error;
 pub mod misc;
 pub mod model;
+#[cfg(feature = "parse")]
+pub mod parsers;
 mod reference;
 
 pub use error::GtfsError;
