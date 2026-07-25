@@ -93,12 +93,67 @@ fn main() {
 }
 ```
 
+## Optional features
+
+- `parse` (off by default; keeps the default build dependency-free) -
+  the `gtfs_rs::parsers::csv` module: header-driven CSV readers with
+  full error context (file, line, field). Enable it in
+  `Cargo.toml`:
+
+  ```toml
+  [dependencies]
+  gtfs-rs = { version = "0.1", features = ["parse"] }
+  ```
+
+  Tables can be read one at a time from any path, or a whole
+  unpacked feed directory at once:
+
+  ```rust
+  use gtfs_rs::parsers::{ParseError, csv};
+  use gtfs_rs::{Agency, GtfsReference};
+
+  /// Reads a single table - no other files required.
+  fn load_agencies(path: &str) -> Result<Vec<Agency>, ParseError> {
+      csv::read_path(path)
+  }
+
+  /// Reads a whole unpacked feed directory.
+  fn load_feed(dir: &str) -> Result<GtfsReference, ParseError> {
+      csv::read_dir(dir)
+  }
+
+  fn main() {
+      match load_agencies("tests/data/sample_feed/agency.txt") {
+          Ok(agencies) => println!("operated by {}", agencies[0].agency_name),
+          Err(e) => eprintln!("failed to read agencies: {e}"),
+      }
+
+      match load_feed("tests/data/sample_feed") {
+          Ok(gtfs) => {
+              println!(
+                  "loaded {} routes, {} trips, {} stop times",
+                  gtfs.routes.len(),
+                  gtfs.trips.len(),
+                  gtfs.stop_times.len(),
+              );
+              for trip in gtfs.trips_of_route("AB") {
+                  println!("route AB trip: {}", trip.trip_id);
+              }
+          }
+          // errors point at the exact record, e.g.:
+          // "stop_times.txt, line 12401, field `arrival_time`:
+          //  invalid GTFS time value: '8h00' (expected HH:MM:SS)"
+          Err(e) => eprintln!("failed to load feed: {e}"),
+      }
+  }
+  ```
+
 ## Scope
 
 The crate models the dataset; it does not read or write files.
 Deliberately out of scope, but W.I.P.:
 
-- CSV/GeoJSON parsing and serialization - entity structs mirror the
+- GeoJSON parsing and serialization - entity structs mirror the
   spec field-for-field so parsers can be layered on top;
 - feed validation beyond basic type safety;
 
