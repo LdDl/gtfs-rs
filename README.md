@@ -56,6 +56,9 @@ fare prices, as the spec mandates - no floating-point rounding).
 
 ## Example
 
+Runnable as [`examples/build_feed`](examples/build_feed/main.rs):
+`cargo run --example build_feed`.
+
 ```rust
 use gtfs_rs::{
     Calendar, Direction, Frequency, GtfsDate, GtfsError, GtfsReference, Route, RouteType, Stop,
@@ -106,7 +109,10 @@ fn main() {
   ```
 
   Tables can be read one at a time from any path, or a whole
-  unpacked feed directory at once:
+  unpacked feed directory at once. Runnable as
+  [`examples/read_feed`](examples/read_feed/main.rs) against the
+  bundled sample feed:
+  `cargo run --example read_feed --features parse`.
 
   ```rust
   use gtfs_rs::parsers::{ParseError, csv};

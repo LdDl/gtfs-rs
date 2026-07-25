@@ -21,3 +21,7 @@ csv = { version = "1", optional = true }
 
 [package.metadata.docs.rs]
 all-features = true
+
+[[example]]
+name = "read_feed"
+required-features = ["parse"]
