@@ -10,35 +10,35 @@ container. Zero dependencies.
 
 | Spec file | Type(s) |
 |---|---|
-| `agency.txt` | `Agency`, `CemvSupport` |
-| `stops.txt` | `Stop`, `LocationType`, `WheelchairBoarding`, `StopAccess` |
-| `routes.txt` | `Route`, `RouteType`, `ContinuousPickupDropOff`, `CemvSupport` |
-| `trips.txt` | `Trip`, `Direction`, `WheelchairAccessible`, `BikesAllowed`, `CarsAllowed` |
-| `stop_times.txt` | `StopTime`, `PickupDropOffType`, `Timepoint` |
-| `calendar.txt` | `Calendar` |
-| `calendar_dates.txt` | `CalendarDate`, `ExceptionType` |
-| `fare_attributes.txt` (legacy Fares v1) | `FareAttributeV1`, `PaymentMethod`, `FareTransfers` |
-| `fare_rules.txt` (legacy Fares v1) | `FareRuleV1` |
-| `timeframes.txt` | `Timeframe` |
-| `rider_categories.txt` | `RiderCategory` |
-| `fare_media.txt` | `FareMedia`, `FareMediaType` |
-| `fare_products.txt` | `FareProduct` |
-| `fare_leg_rules.txt` | `FareLegRule` |
-| `fare_leg_join_rules.txt` | `FareLegJoinRule` |
-| `fare_transfer_rules.txt` | `FareTransferRule`, `FareTransferType`, `DurationLimitType` |
-| `areas.txt` / `stop_areas.txt` | `Area`, `StopArea` |
-| `networks.txt` / `route_networks.txt` | `Network`, `RouteNetwork` |
-| `shapes.txt` | `ShapePoint` |
-| `frequencies.txt` | `Frequency`, `ExactTimes` |
-| `transfers.txt` | `Transfer`, `TransferType` |
-| `pathways.txt` | `Pathway`, `PathwayMode` |
-| `levels.txt` | `Level` |
-| `location_groups.txt` / `location_group_stops.txt` | `LocationGroup`, `LocationGroupStop` |
-| `locations.geojson` | `Location`, `LocationGeometry` |
-| `booking_rules.txt` | `BookingRule`, `BookingType` |
-| `translations.txt` | `Translation`, `TableName` |
-| `feed_info.txt` | `FeedInfo` |
-| `attributions.txt` | `Attribution` |
+| [`agency.txt`](https://gtfs.org/documentation/schedule/reference/#agencytxt) | `Agency`, `CemvSupport` |
+| [`stops.txt`](https://gtfs.org/documentation/schedule/reference/#stopstxt) | `Stop`, `LocationType`, `WheelchairBoarding`, `StopAccess` |
+| [`routes.txt`](https://gtfs.org/documentation/schedule/reference/#routestxt) | `Route`, `RouteType`, `ContinuousPickupDropOff`, `CemvSupport` |
+| [`trips.txt`](https://gtfs.org/documentation/schedule/reference/#tripstxt) | `Trip`, `Direction`, `WheelchairAccessible`, `BikesAllowed`, `CarsAllowed` |
+| [`stop_times.txt`](https://gtfs.org/documentation/schedule/reference/#stop_timestxt) | `StopTime`, `PickupDropOffType`, `Timepoint` |
+| [`calendar.txt`](https://gtfs.org/documentation/schedule/reference/#calendartxt) | `Calendar` |
+| [`calendar_dates.txt`](https://gtfs.org/documentation/schedule/reference/#calendar_datestxt) | `CalendarDate`, `ExceptionType` |
+| [`fare_attributes.txt`](https://gtfs.org/documentation/schedule/reference/#fare_attributestxt) (legacy Fares v1) | `FareAttributeV1`, `PaymentMethod`, `FareTransfers` |
+| [`fare_rules.txt`](https://gtfs.org/documentation/schedule/reference/#fare_rulestxt) (legacy Fares v1) | `FareRuleV1` |
+| [`timeframes.txt`](https://gtfs.org/documentation/schedule/reference/#timeframestxt) | `Timeframe` |
+| [`rider_categories.txt`](https://gtfs.org/documentation/schedule/reference/#rider_categoriestxt) | `RiderCategory` |
+| [`fare_media.txt`](https://gtfs.org/documentation/schedule/reference/#fare_mediatxt) | `FareMedia`, `FareMediaType` |
+| [`fare_products.txt`](https://gtfs.org/documentation/schedule/reference/#fare_productstxt) | `FareProduct` |
+| [`fare_leg_rules.txt`](https://gtfs.org/documentation/schedule/reference/#fare_leg_rulestxt) | `FareLegRule` |
+| [`fare_leg_join_rules.txt`](https://gtfs.org/documentation/schedule/reference/#fare_leg_join_rulestxt) | `FareLegJoinRule` |
+| [`fare_transfer_rules.txt`](https://gtfs.org/documentation/schedule/reference/#fare_transfer_rulestxt) | `FareTransferRule`, `FareTransferType`, `DurationLimitType` |
+| [`areas.txt`](https://gtfs.org/documentation/schedule/reference/#areastxt) / [`stop_areas.txt`](https://gtfs.org/documentation/schedule/reference/#stop_areastxt) | `Area`, `StopArea` |
+| [`networks.txt`](https://gtfs.org/documentation/schedule/reference/#networkstxt) / [`route_networks.txt`](https://gtfs.org/documentation/schedule/reference/#route_networkstxt) | `Network`, `RouteNetwork` |
+| [`shapes.txt`](https://gtfs.org/documentation/schedule/reference/#shapestxt) | `ShapePoint` |
+| [`frequencies.txt`](https://gtfs.org/documentation/schedule/reference/#frequenciestxt) | `Frequency`, `ExactTimes` |
+| [`transfers.txt`](https://gtfs.org/documentation/schedule/reference/#transferstxt) | `Transfer`, `TransferType` |
+| [`pathways.txt`](https://gtfs.org/documentation/schedule/reference/#pathwaystxt) | `Pathway`, `PathwayMode` |
+| [`levels.txt`](https://gtfs.org/documentation/schedule/reference/#levelstxt) | `Level` |
+| [`location_groups.txt`](https://gtfs.org/documentation/schedule/reference/#location_groupstxt) / [`location_group_stops.txt`](https://gtfs.org/documentation/schedule/reference/#location_group_stopstxt) | `LocationGroup`, `LocationGroupStop` |
+| [`locations.geojson`](https://gtfs.org/documentation/schedule/reference/#locationsgeojson) | `Location`, `LocationGeometry` |
+| [`booking_rules.txt`](https://gtfs.org/documentation/schedule/reference/#booking_rulestxt) | `BookingRule`, `BookingType` |
+| [`translations.txt`](https://gtfs.org/documentation/schedule/reference/#translationstxt) | `Translation`, `TableName` |
+| [`feed_info.txt`](https://gtfs.org/documentation/schedule/reference/#feed_infotxt) | `FeedInfo` |
+| [`attributions.txt`](https://gtfs.org/documentation/schedule/reference/#attributionstxt) | `Attribution` |
 
 Field names follow the specification verbatim. Required fields are
 plain values, optional fields are `Option`s, and enumerated fields
