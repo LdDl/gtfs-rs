@@ -13,8 +13,8 @@ impl CsvRecord for Stop {
         stop.stop_name = opt_string(row, "stop_name");
         stop.tts_stop_name = opt_string(row, "tts_stop_name");
         stop.stop_desc = opt_string(row, "stop_desc");
-        stop.stop_lat = row.opt_num("stop_lat", "a latitude")?;
-        stop.stop_lon = row.opt_num("stop_lon", "a longitude")?;
+        stop.stop_lat = row.opt_lat("stop_lat")?;
+        stop.stop_lon = row.opt_lon("stop_lon")?;
         stop.zone_id = opt_string(row, "zone_id");
         stop.stop_url = opt_string(row, "stop_url");
         stop.location_type = row

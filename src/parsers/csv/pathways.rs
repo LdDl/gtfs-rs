@@ -15,11 +15,11 @@ impl CsvRecord for Pathway {
             row.req_code("pathway_mode", PathwayMode::from_code, "code 1-7")?,
             row.req_bool01("is_bidirectional")?,
         );
-        pathway.length = row.opt_num("length", "meters")?;
+        pathway.length = row.opt_finite("length", "meters")?;
         pathway.traversal_time = row.opt_num("traversal_time", "seconds")?;
         pathway.stair_count = row.opt_num("stair_count", "an integer")?;
-        pathway.max_slope = row.opt_num("max_slope", "a slope ratio")?;
-        pathway.min_width = row.opt_num("min_width", "meters")?;
+        pathway.max_slope = row.opt_finite("max_slope", "a slope ratio")?;
+        pathway.min_width = row.opt_finite("min_width", "meters")?;
         pathway.signposted_as = opt_string(row, "signposted_as");
         pathway.reversed_signposted_as = opt_string(row, "reversed_signposted_as");
         Ok(pathway)

@@ -7,6 +7,9 @@ use std::collections::HashMap;
 use crate::misc::{CurrencyAmount, GtfsDate, parse_gtfs_time};
 use crate::parsers::{ParseError, ParseErrorKind};
 
+const LAT_EXPECTED: &str = "a finite latitude in [-90, 90]";
+const LON_EXPECTED: &str = "a finite longitude in [-180, 180]";
+
 /// Reads an optional string column into an owned value.
 pub(crate) fn opt_string(row: &Row<'_>, name: &str) -> Option<String> {
     row.opt(name).map(str::to_string)
@@ -379,6 +382,301 @@ impl Row<'_> {
         match raw.parse() {
             Ok(value) => Ok(value),
             Err(_) => Err(self.invalid(name, raw, expected)),
+        }
+    }
+
+    /// Parses an optional WGS84 latitude column: a finite number in
+    /// `[-90, 90]`. `NaN`, infinities and out-of-range values are
+    /// rejected instead of silently poisoning downstream geometry.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ParseErrorKind::Invalid`] for non-finite or
+    /// out-of-range values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::parsers::ParseError;
+    /// use gtfs_rs::parsers::csv::{self, CsvRecord, Row};
+    ///
+    /// struct Lat {
+    ///     stop_lat: Option<f64>,
+    /// }
+    ///
+    /// impl CsvRecord for Lat {
+    ///     const FILE_NAME: &'static str = "stops.txt";
+    ///
+    ///     fn from_row(row: &Row<'_>) -> Result<Self, ParseError> {
+    ///         Ok(Lat {
+    ///             stop_lat: row.opt_lat("stop_lat")?,
+    ///         })
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let data = "stop_id,stop_lat\nA,NaN\n";
+    ///     assert!(csv::read::<Lat, _>("stops.txt", data.as_bytes()).is_err());
+    /// }
+    /// ```
+    pub fn opt_lat(&self, name: &str) -> Result<Option<f64>, ParseError> {
+        match self.opt(name) {
+            None => Ok(None),
+            Some(raw) => Ok(Some(self.parse_range(
+                name,
+                raw,
+                -90.0,
+                90.0,
+                LAT_EXPECTED,
+            )?)),
+        }
+    }
+
+    /// Parses a required WGS84 latitude column: a finite number in
+    /// `[-90, 90]`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ParseErrorKind::MissingColumn`],
+    /// [`ParseErrorKind::EmptyValue`] or [`ParseErrorKind::Invalid`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::parsers::ParseError;
+    /// use gtfs_rs::parsers::csv::{self, CsvRecord, Row};
+    ///
+    /// struct Point {
+    ///     shape_pt_lat: f64,
+    /// }
+    ///
+    /// impl CsvRecord for Point {
+    ///     const FILE_NAME: &'static str = "shapes.txt";
+    ///
+    ///     fn from_row(row: &Row<'_>) -> Result<Self, ParseError> {
+    ///         Ok(Point {
+    ///             shape_pt_lat: row.req_lat("shape_pt_lat")?,
+    ///         })
+    ///     }
+    /// }
+    ///
+    /// fn main() -> Result<(), ParseError> {
+    ///     let data = "shape_id,shape_pt_lat\nsh,55.751\n";
+    ///     let points: Vec<Point> = csv::read("shapes.txt", data.as_bytes())?;
+    ///     assert_eq!(points[0].shape_pt_lat, 55.751);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn req_lat(&self, name: &str) -> Result<f64, ParseError> {
+        let raw = self.req(name)?;
+        self.parse_range(name, raw, -90.0, 90.0, LAT_EXPECTED)
+    }
+
+    /// Parses an optional WGS84 longitude column: a finite number in
+    /// `[-180, 180]`. `NaN`, infinities and out-of-range values are
+    /// rejected instead of silently poisoning downstream geometry.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ParseErrorKind::Invalid`] for non-finite or
+    /// out-of-range values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::parsers::ParseError;
+    /// use gtfs_rs::parsers::csv::{self, CsvRecord, Row};
+    ///
+    /// struct Lon {
+    ///     stop_lon: Option<f64>,
+    /// }
+    ///
+    /// impl CsvRecord for Lon {
+    ///     const FILE_NAME: &'static str = "stops.txt";
+    ///
+    ///     fn from_row(row: &Row<'_>) -> Result<Self, ParseError> {
+    ///         Ok(Lon {
+    ///             stop_lon: row.opt_lon("stop_lon")?,
+    ///         })
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let data = "stop_id,stop_lon\nA,200.5\n";
+    ///     assert!(csv::read::<Lon, _>("stops.txt", data.as_bytes()).is_err());
+    /// }
+    /// ```
+    pub fn opt_lon(&self, name: &str) -> Result<Option<f64>, ParseError> {
+        match self.opt(name) {
+            None => Ok(None),
+            Some(raw) => Ok(Some(self.parse_range(
+                name,
+                raw,
+                -180.0,
+                180.0,
+                LON_EXPECTED,
+            )?)),
+        }
+    }
+
+    /// Parses a required WGS84 longitude column: a finite number in
+    /// `[-180, 180]`.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ParseErrorKind::MissingColumn`],
+    /// [`ParseErrorKind::EmptyValue`] or [`ParseErrorKind::Invalid`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::parsers::ParseError;
+    /// use gtfs_rs::parsers::csv::{self, CsvRecord, Row};
+    ///
+    /// struct Point {
+    ///     shape_pt_lon: f64,
+    /// }
+    ///
+    /// impl CsvRecord for Point {
+    ///     const FILE_NAME: &'static str = "shapes.txt";
+    ///
+    ///     fn from_row(row: &Row<'_>) -> Result<Self, ParseError> {
+    ///         Ok(Point {
+    ///             shape_pt_lon: row.req_lon("shape_pt_lon")?,
+    ///         })
+    ///     }
+    /// }
+    ///
+    /// fn main() -> Result<(), ParseError> {
+    ///     let data = "shape_id,shape_pt_lon\nsh,37.617\n";
+    ///     let points: Vec<Point> = csv::read("shapes.txt", data.as_bytes())?;
+    ///     assert_eq!(points[0].shape_pt_lon, 37.617);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn req_lon(&self, name: &str) -> Result<f64, ParseError> {
+        let raw = self.req(name)?;
+        self.parse_range(name, raw, -180.0, 180.0, LON_EXPECTED)
+    }
+
+    /// Parses an optional float column, rejecting `NaN` and
+    /// infinities (which plain `f64` parsing would accept).
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - Column name
+    /// * `expected` - Description for error messages
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ParseErrorKind::Invalid`] for non-numeric or
+    /// non-finite values.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::parsers::ParseError;
+    /// use gtfs_rs::parsers::csv::{self, CsvRecord, Row};
+    ///
+    /// struct Length {
+    ///     length: Option<f64>,
+    /// }
+    ///
+    /// impl CsvRecord for Length {
+    ///     const FILE_NAME: &'static str = "pathways.txt";
+    ///
+    ///     fn from_row(row: &Row<'_>) -> Result<Self, ParseError> {
+    ///         Ok(Length {
+    ///             length: row.opt_finite("length", "meters")?,
+    ///         })
+    ///     }
+    /// }
+    ///
+    /// fn main() {
+    ///     let data = "pathway_id,length\npw1,inf\n";
+    ///     assert!(csv::read::<Length, _>("pathways.txt", data.as_bytes()).is_err());
+    /// }
+    /// ```
+    pub fn opt_finite(&self, name: &str, expected: &str) -> Result<Option<f64>, ParseError> {
+        match self.opt(name) {
+            None => Ok(None),
+            Some(raw) => Ok(Some(self.parse_finite(name, raw, expected)?)),
+        }
+    }
+
+    /// Parses a required float column, rejecting `NaN` and
+    /// infinities.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - Column name
+    /// * `expected` - Description for error messages
+    ///
+    /// # Errors
+    ///
+    /// Returns [`ParseErrorKind::MissingColumn`],
+    /// [`ParseErrorKind::EmptyValue`] or [`ParseErrorKind::Invalid`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use gtfs_rs::parsers::ParseError;
+    /// use gtfs_rs::parsers::csv::{self, CsvRecord, Row};
+    ///
+    /// struct Index {
+    ///     level_index: f64,
+    /// }
+    ///
+    /// impl CsvRecord for Index {
+    ///     const FILE_NAME: &'static str = "levels.txt";
+    ///
+    ///     fn from_row(row: &Row<'_>) -> Result<Self, ParseError> {
+    ///         Ok(Index {
+    ///             level_index: row.req_finite("level_index", "a level index")?,
+    ///         })
+    ///     }
+    /// }
+    ///
+    /// fn main() -> Result<(), ParseError> {
+    ///     let data = "level_id,level_index\nL-1,-1.5\n";
+    ///     let levels: Vec<Index> = csv::read("levels.txt", data.as_bytes())?;
+    ///     assert_eq!(levels[0].level_index, -1.5);
+    ///     Ok(())
+    /// }
+    /// ```
+    pub fn req_finite(&self, name: &str, expected: &str) -> Result<f64, ParseError> {
+        let raw = self.req(name)?;
+        self.parse_finite(name, raw, expected)
+    }
+
+    /// Parses one float and checks that it is finite and within the
+    /// inclusive range.
+    fn parse_range(
+        &self,
+        name: &str,
+        raw: &str,
+        min: f64,
+        max: f64,
+        expected: &str,
+    ) -> Result<f64, ParseError> {
+        let value = self.parse_finite(name, raw, expected)?;
+        if (min..=max).contains(&value) {
+            Ok(value)
+        } else {
+            Err(self.invalid(name, raw, expected))
+        }
+    }
+
+    /// Parses one float and checks that it is finite.
+    fn parse_finite(&self, name: &str, raw: &str, expected: &str) -> Result<f64, ParseError> {
+        let value: f64 = match raw.parse() {
+            Ok(value) => value,
+            Err(_) => return Err(self.invalid(name, raw, expected)),
+        };
+        if value.is_finite() {
+            Ok(value)
+        } else {
+            Err(self.invalid(name, raw, expected))
         }
     }
 

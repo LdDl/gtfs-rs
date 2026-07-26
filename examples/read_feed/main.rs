@@ -13,7 +13,10 @@ use gtfs_rs::parsers::csv;
 fn main() {
     // one table via its named shortcut - no other files required
     match csv::read_agencies("tests/data/sample_feed/agency.txt") {
-        Ok(agencies) => println!("operated by {}", agencies[0].agency_name),
+        Ok(agencies) => match agencies.first() {
+            Some(agency) => println!("operated by {}", agency.agency_name),
+            None => println!("agency.txt has no records"),
+        },
         Err(e) => eprintln!("failed to read agencies: {e}"),
     }
 

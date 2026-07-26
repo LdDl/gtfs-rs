@@ -31,8 +31,8 @@ impl CsvRecord for Trip {
         trip.cars_allowed = row
             .opt_code("cars_allowed", CarsAllowed::from_code, "code 0-2")?
             .unwrap_or_default();
-        trip.safe_duration_factor = row.opt_num("safe_duration_factor", "a float")?;
-        trip.safe_duration_offset = row.opt_num("safe_duration_offset", "a float")?;
+        trip.safe_duration_factor = row.opt_finite("safe_duration_factor", "a finite float")?;
+        trip.safe_duration_offset = row.opt_finite("safe_duration_offset", "a finite float")?;
         Ok(trip)
     }
 }

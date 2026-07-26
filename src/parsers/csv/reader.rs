@@ -60,7 +60,20 @@ pub fn read<T: CsvRecord, R: io::Read>(file_label: &str, reader: R) -> Result<Ve
     };
     let mut header = HashMap::new();
     for (index, name) in header_record.iter().enumerate() {
-        header.insert(name.trim().to_string(), index);
+        let name = name.trim().to_string();
+        // trailing separators produce empty header cells; they can
+        // never be looked up, so they do not count as duplicates
+        if name.is_empty() {
+            continue;
+        }
+        if header.insert(name.clone(), index).is_some() {
+            return Err(ParseError {
+                file: file_label.to_string(),
+                line: 1,
+                field: Some(name),
+                kind: ParseErrorKind::DuplicateColumn,
+            });
+        }
     }
 
     let mut out = Vec::new();
@@ -211,6 +224,20 @@ Demo,https://x.example,UTC
         let agencies: Vec<Agency> = read("agency.txt", data.as_bytes())?;
         assert!(agencies[0].agency_lang.is_none());
         Ok(())
+    }
+
+    #[test]
+    fn test_duplicate_header_column_is_rejected() {
+        let data = "\
+agency_name,agency_name,agency_url,agency_timezone
+Demo,Demo2,https://x.example,UTC
+";
+        let Err(err) = read::<Agency, _>("agency.txt", data.as_bytes()) else {
+            panic!("expected a duplicate-column error");
+        };
+        assert_eq!(err.line, 1);
+        assert_eq!(err.field.as_deref(), Some("agency_name"));
+        assert!(matches!(err.kind, ParseErrorKind::DuplicateColumn));
     }
 
     #[test]

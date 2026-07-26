@@ -10,11 +10,11 @@ impl CsvRecord for ShapePoint {
     fn from_row(row: &Row<'_>) -> Result<Self, ParseError> {
         let mut point = ShapePoint::new(
             row.req("shape_id")?,
-            row.req_num("shape_pt_lat", "a latitude")?,
-            row.req_num("shape_pt_lon", "a longitude")?,
+            row.req_lat("shape_pt_lat")?,
+            row.req_lon("shape_pt_lon")?,
             row.req_num("shape_pt_sequence", "a non-negative integer")?,
         );
-        point.shape_dist_traveled = row.opt_num("shape_dist_traveled", "a distance")?;
+        point.shape_dist_traveled = row.opt_finite("shape_dist_traveled", "a finite distance")?;
         Ok(point)
     }
 }

@@ -210,13 +210,8 @@ fn parse_geometry(
     let coordinates = geometry.get("coordinates");
     match (geometry_type, coordinates) {
         (Some("Polygon"), Some(coordinates)) => match parse_polygon(coordinates) {
-            Some(rings) => Ok(LocationGeometry::Polygon(rings)),
-            None => Err(invalid(
-                file,
-                path,
-                "<malformed coordinates>",
-                "rings of [lon, lat] positions",
-            )),
+            Ok(rings) => Ok(LocationGeometry::Polygon(rings)),
+            Err(expected) => Err(invalid(file, path, "<malformed coordinates>", expected)),
         },
         (Some("MultiPolygon"), Some(coordinates)) => {
             let polygons = match coordinates.as_array() {
@@ -233,14 +228,9 @@ fn parse_geometry(
             let mut out = Vec::with_capacity(polygons.len());
             for polygon in polygons {
                 match parse_polygon(polygon) {
-                    Some(rings) => out.push(rings),
-                    None => {
-                        return Err(invalid(
-                            file,
-                            path,
-                            "<malformed coordinates>",
-                            "rings of [lon, lat] positions",
-                        ));
+                    Ok(rings) => out.push(rings),
+                    Err(expected) => {
+                        return Err(invalid(file, path, "<malformed coordinates>", expected));
                     }
                 }
             }
@@ -255,19 +245,26 @@ fn parse_geometry(
     }
 }
 
-/// Parses polygon coordinates: a list of rings of positions.
-fn parse_polygon(coordinates: &Value) -> Option<Vec<Vec<[f64; 2]>>> {
-    let rings = coordinates.as_array()?;
+/// Parses polygon coordinates: a list of closed linear rings. On
+/// failure returns the description of what was expected.
+fn parse_polygon(coordinates: &Value) -> Result<Vec<Vec<[f64; 2]>>, &'static str> {
+    const MALFORMED: &str = "rings of [lon, lat] positions";
+    const UNCLOSED: &str =
+        "closed linear rings (at least 4 positions, first == last), per RFC 7946";
+    let rings = coordinates.as_array().ok_or(MALFORMED)?;
     let mut out = Vec::with_capacity(rings.len());
     for ring in rings {
-        let positions = ring.as_array()?;
+        let positions = ring.as_array().ok_or(MALFORMED)?;
         let mut points = Vec::with_capacity(positions.len());
         for position in positions {
-            points.push(parse_position(position)?);
+            points.push(parse_position(position).ok_or(MALFORMED)?);
+        }
+        if points.len() < 4 || points.first() != points.last() {
+            return Err(UNCLOSED);
         }
         out.push(points);
     }
-    Some(out)
+    Ok(out)
 }
 
 /// Parses one `[lon, lat]` position; extra members (altitude) are
@@ -340,6 +337,24 @@ mod tests {
             panic!("expected a missing-id error");
         };
         assert_eq!(err.field.as_deref(), Some("features[0].id"));
+    }
+
+    #[test]
+    fn test_rejects_unclosed_ring() {
+        let data = r#"{
+            "type": "FeatureCollection",
+            "features": [{
+                "type": "Feature",
+                "id": "open",
+                "geometry": { "type": "Polygon", "coordinates": [[
+                    [0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]
+                ]] }
+            }]
+        }"#;
+        let Err(err) = read_locations_str("locations.geojson", data) else {
+            panic!("expected an unclosed-ring error");
+        };
+        assert!(err.to_string().contains("closed linear rings"));
     }
 
     #[test]

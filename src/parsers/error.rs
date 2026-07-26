@@ -37,6 +37,8 @@ pub enum ParseErrorKind {
     Json(serde_json::Error),
     /// A required column is missing from the header
     MissingColumn,
+    /// A column name appears more than once in the header
+    DuplicateColumn,
     /// A required field has an empty value
     EmptyValue,
     /// A value does not match the expected format
@@ -68,6 +70,9 @@ impl fmt::Display for ParseError {
             ParseErrorKind::Json(e) => write!(f, ": invalid JSON: {}", e),
             ParseErrorKind::MissingColumn => {
                 write!(f, ": required column is missing")
+            }
+            ParseErrorKind::DuplicateColumn => {
+                write!(f, ": duplicate column in header")
             }
             ParseErrorKind::EmptyValue => {
                 write!(f, ": required value is empty")

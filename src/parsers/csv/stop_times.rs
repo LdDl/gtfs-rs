@@ -39,7 +39,7 @@ impl CsvRecord for StopTime {
                     "code 0-3",
                 )?
                 .unwrap_or_default(),
-            shape_dist_traveled: row.opt_num("shape_dist_traveled", "a distance")?,
+            shape_dist_traveled: row.opt_finite("shape_dist_traveled", "a finite distance")?,
             timepoint: row
                 .opt_code("timepoint", Timepoint::from_code, "code 0-1")?
                 .unwrap_or_default(),

@@ -10,7 +10,7 @@ impl CsvRecord for Level {
     fn from_row(row: &Row<'_>) -> Result<Self, ParseError> {
         let mut level = Level::new(
             row.req("level_id")?,
-            row.req_num("level_index", "a level index")?,
+            row.req_finite("level_index", "a level index")?,
         );
         level.level_name = opt_string(row, "level_name");
         Ok(level)
