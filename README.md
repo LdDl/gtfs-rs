@@ -6,6 +6,30 @@ Rust. Every dataset file is represented by a typed struct, every
 enumerated field by a typed enum, collected in the `GtfsReference`
 container. Zero dependencies.
 
+## Installation
+
+With `cargo add`:
+
+```sh
+cargo add gtfs-rs
+# with the CSV parser:
+cargo add gtfs-rs --features parse
+# with the CSV parser and the GTFS-Flex locations.geojson reader:
+cargo add gtfs-rs --features geojson
+```
+
+Or manually in `Cargo.toml`:
+
+```toml
+[dependencies]
+gtfs-rs = "0.1"
+# or, with parsers enabled:
+gtfs-rs = { version = "0.1", features = ["geojson"] }
+```
+
+Without features the crate is the pure data model with zero
+dependencies; see [Optional features](#optional-features).
+
 ## Coverage
 
 | Spec file | Type(s) |
