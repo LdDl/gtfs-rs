@@ -1,14 +1,14 @@
 //! Shared helpers for the parser tests - the crate's "testutil".
 //!
 //! This module exists ONLY in test builds: it is declared as
-//! `#[cfg(test)] pub(crate) mod test_support;` in `mod.rs`, so a
+//! `#[cfg(test)] pub mod test_support;` in `mod.rs`, so a
 //! release build contains none of it - no code, no public API, no
 //! rustdoc page. The Go analogy is a `testutil` package or a
 //! `helpers_test.go` file.
 //!
 //! It lives under `csv` for historical reasons but serves the test
 //! modules of `csv`, `feed` and `geojson` alike - hence the
-//! `pub(crate)` visibility instead of private.
+//! `pub` visibility gated by `#[cfg(test)]`.
 //!
 //! What it provides:
 //!

@@ -122,6 +122,36 @@ fn main() {
 }
 ```
 
+## Validation
+
+Structural validation is built into the core - no features needed.
+`GtfsReference::validate()` checks the spec's conditionally required/forbidden field combinations, primary-key uniqueness and referential integrity across all tables, and returns a report with every found issue at once (errors and warnings), each carrying a machine-readable rule code and a trace to the offending record.
+Runnable as [`examples/validate_feed`](examples/validate_feed/main.rs):
+`cargo run --example validate_feed`.
+
+```rust
+use gtfs_rs::{GtfsReference, StopTime, Trip};
+
+fn main() {
+    let mut gtfs = GtfsReference::new();
+    gtfs.trips.push(Trip::new("t0", "NO_SUCH_ROUTE", "NO_SVC"));
+    gtfs.stop_times.push(StopTime::new("t0", "NO_SUCH_STOP", 1, 8 * 3600));
+
+    let report = gtfs.validate();
+    println!("{report}"); // "3 error(s), 0 warning(s)"
+    for issue in report.errors() {
+        // e.g. "trips.txt, record `t0`, field `route_id`:
+        // references unknown record `NO_SUCH_ROUTE`"
+        println!("{issue}");
+    }
+}
+```
+
+It is an embeddable pre-flight check for Rust pipelines, not a
+replacement for the canonical
+[MobilityData gtfs-validator](https://github.com/MobilityData/gtfs-validator),
+which covers hundreds of rules including best practices.
+
 ## Optional features
 
 - `parse` (off by default; keeps the default build dependency-free) -
@@ -226,10 +256,23 @@ The crate models the dataset; writing files is not implemented yet.
 Deliberately out of scope, but W.I.P.:
 
 - serialization (writing feeds back to CSV/GeoJSON);
-- feed validation beyond basic type safety;
 
-Don't think gonna do it, but maybe:
+Don't think gonna do it, but maybe in future:
 - GTFS Realtime.
+
+## Acknowledgements
+
+This crate stands on the work of the GTFS community:
+
+- [MobilityData](https://mobilitydata.org/) - stewardship of the
+  GTFS specification and [gtfs.org](https://gtfs.org/), and the
+  [gtfs-validator](https://github.com/MobilityData/gtfs-validator),
+  whose rule catalogue inspired the built-in validation;
+- [Google and the google/transit contributors](https://github.com/google/transit) -
+  the original specification, its canonical reference text and the
+  sample feed used as a test fixture here;
+- everyone maintaining and evolving GTFS, Fares v2 and GTFS-Flex in
+  the open.
 
 ## License
 

@@ -15,10 +15,13 @@
 //! ([`FareAttributeV1`], [`FareRuleV1`]); unsuffixed fare types
 //! belong to the current Fares v2 framework.
 //!
-//! Deliberately out of scope: file parsing/serialization, feed
-//! validation and GTFS Realtime. Datasets are populated
-//! programmatically; entity structs mirror the spec field-for-field
-//! so parsers can be layered on top.
+//! Datasets are populated programmatically or read with the
+//! feature-gated parsers (see below); entity structs mirror the spec
+//! field-for-field. Structural validation is built in:
+//! [`GtfsReference::validate`] reports every intra-record,
+//! uniqueness and referential-integrity problem at once.
+//! Deliberately out of scope: writing feeds back to disk and GTFS
+//! Realtime.
 //!
 //! # Crate layout
 //!
@@ -35,10 +38,11 @@
 //!   conversions.
 //!
 //! On top of them sit [`GtfsReference`] - the whole dataset as a
-//! single value with lookup helpers - and the [`GtfsError`] error
-//! type. Everything is also re-exported flat from the crate root,
-//! so downstream code can simply import `gtfs_rs::Stop` instead of
-//! the full module path.
+//! single value with lookup helpers - the [`validate`] module with
+//! the structural checks, and the [`GtfsError`] error type.
+//! Everything is also re-exported flat from the crate root, so
+//! downstream code can simply import `gtfs_rs::Stop` instead of the
+//! full module path.
 //!
 //! # Cargo features
 //!
@@ -73,8 +77,10 @@ pub mod model;
 #[cfg(feature = "parse")]
 pub mod parsers;
 mod reference;
+pub mod validate;
 
 pub use error::GtfsError;
 pub use misc::{CurrencyAmount, GtfsDate, Weekday, format_gtfs_time, parse_gtfs_time};
 pub use model::*;
 pub use reference::GtfsReference;
+pub use validate::{Rule, Severity, ValidationIssue, ValidationReport};

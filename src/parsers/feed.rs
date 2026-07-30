@@ -22,7 +22,7 @@ use crate::reference::GtfsReference;
 /// Implemented by the unpacked-directory source here and by the zip
 /// source in `parsers::zip`, so [`read_tables`] can fill a
 /// [`GtfsReference`] from either without duplicating the table list.
-pub(crate) trait TableSource {
+pub trait TableSource {
     /// Opens one table by its canonical file name; `Ok(None)` when
     /// the container has no such file.
     fn open(&mut self, name: &str) -> Result<Option<Box<dyn io::Read + '_>>, ParseError>;
@@ -39,7 +39,7 @@ pub(crate) trait TableSource {
 /// read when present and left empty otherwise. `feed_info.txt`
 /// contributes at most one record. With the `geojson` cargo feature
 /// enabled, a present `locations.geojson` is read as well.
-pub(crate) fn read_tables<S: TableSource>(source: &mut S) -> Result<GtfsReference, ParseError> {
+pub fn read_tables<S: TableSource>(source: &mut S) -> Result<GtfsReference, ParseError> {
     let mut gtfs = GtfsReference::new();
     // required tables
     gtfs.agencies = required::<Agency, _>(source)?;

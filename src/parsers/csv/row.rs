@@ -11,7 +11,7 @@ const LAT_EXPECTED: &str = "a finite latitude in [-90, 90]";
 const LON_EXPECTED: &str = "a finite longitude in [-180, 180]";
 
 /// Reads an optional string column into an owned value.
-pub(crate) fn opt_string(row: &Row<'_>, name: &str) -> Option<String> {
+pub fn opt_string(row: &Row<'_>, name: &str) -> Option<String> {
     row.opt(name).map(str::to_string)
 }
 
@@ -52,13 +52,56 @@ pub(crate) fn opt_string(row: &Row<'_>, name: &str) -> Option<String> {
 /// }
 /// ```
 pub struct Row<'a> {
-    pub(super) file: &'a str,
-    pub(super) line: u64,
-    pub(super) header: &'a HashMap<String, usize>,
-    pub(super) record: &'a csv::StringRecord,
+    file: &'a str,
+    line: u64,
+    header: &'a HashMap<String, usize>,
+    values: &'a [&'a str],
 }
 
-impl Row<'_> {
+impl<'a> Row<'a> {
+    /// Builds a row from its parts: the file label, the one-based
+    /// line number, the header map (column name to index) and the
+    /// field values in column order.
+    ///
+    /// Used by the readers of this module; also handy to unit-test a
+    /// custom [`CsvRecord`](crate::parsers::csv::CsvRecord)
+    /// implementation without going through CSV bytes.
+    ///
+    /// # Arguments
+    ///
+    /// * `file` - Name used in error messages (e.g. "stops.txt")
+    /// * `line` - One-based line number within the file
+    /// * `header` - Column name to value-index map
+    /// * `values` - Field values in column order
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::HashMap;
+    ///
+    /// use gtfs_rs::parsers::csv::Row;
+    ///
+    /// let mut header = HashMap::new();
+    /// header.insert("stop_id".to_string(), 0);
+    /// let values = ["A"];
+    ///
+    /// let row = Row::new("stops.txt", 2, &header, &values);
+    /// assert_eq!(row.opt("stop_id"), Some("A"));
+    /// assert!(row.opt("stop_name").is_none());
+    /// ```
+    pub fn new(
+        file: &'a str,
+        line: u64,
+        header: &'a HashMap<String, usize>,
+        values: &'a [&'a str],
+    ) -> Row<'a> {
+        Row {
+            file,
+            line,
+            header,
+            values,
+        }
+    }
     /// Returns the trimmed value of an optional column, or `None`
     /// when the column is absent or the value is empty.
     ///
@@ -92,7 +135,7 @@ impl Row<'_> {
     /// ```
     pub fn opt(&self, name: &str) -> Option<&str> {
         let index = *self.header.get(name)?;
-        match self.record.get(index).map(str::trim) {
+        match self.values.get(index).copied().map(str::trim) {
             None | Some("") => None,
             Some(value) => Some(value),
         }

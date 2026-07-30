@@ -2,7 +2,8 @@
 
 use crate::model::{BikesAllowed, CarsAllowed, Direction, Trip, WheelchairAccessible};
 use crate::parsers::ParseError;
-use crate::parsers::csv::{CsvRecord, Row, opt_string};
+use crate::parsers::csv::row::opt_string;
+use crate::parsers::csv::{CsvRecord, Row};
 
 impl CsvRecord for Trip {
     const FILE_NAME: &'static str = "trips.txt";

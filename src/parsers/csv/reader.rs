@@ -91,12 +91,8 @@ pub fn read<T: CsvRecord, R: io::Read>(file_label: &str, reader: R) -> Result<Ve
             }
         };
         let line = record.position().map_or(0, |p| p.line());
-        let row = Row {
-            file: file_label,
-            line,
-            header: &header,
-            record: &record,
-        };
+        let values: Vec<&str> = record.iter().collect();
+        let row = Row::new(file_label, line, &header, &values);
         out.push(T::from_row(&row)?);
     }
     Ok(out)

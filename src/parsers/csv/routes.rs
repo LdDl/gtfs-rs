@@ -2,7 +2,8 @@
 
 use crate::model::{CemvSupport, ContinuousPickupDropOff, Route, RouteType};
 use crate::parsers::ParseError;
-use crate::parsers::csv::{CsvRecord, Row, opt_string};
+use crate::parsers::csv::row::opt_string;
+use crate::parsers::csv::{CsvRecord, Row};
 
 impl CsvRecord for Route {
     const FILE_NAME: &'static str = "routes.txt";

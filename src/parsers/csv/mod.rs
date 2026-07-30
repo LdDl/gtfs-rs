@@ -41,7 +41,7 @@ mod shortcuts;
 mod stop_times;
 mod stops;
 #[cfg(test)]
-pub(crate) mod test_support;
+pub mod test_support;
 mod transfers;
 mod translations;
 mod trips;
@@ -49,5 +49,4 @@ mod trips;
 pub use reader::{read, read_path};
 pub use record::CsvRecord;
 pub use row::Row;
-pub(crate) use row::opt_string;
 pub use shortcuts::*;
