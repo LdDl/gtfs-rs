@@ -8,9 +8,8 @@
 //! cargo run --example write_feed
 //! ```
 
-use std::env;
 use std::error::Error;
-use std::path::PathBuf;
+use std::path::Path;
 
 use gtfs_rs::writers;
 use gtfs_rs::writers::csv;
@@ -49,7 +48,7 @@ fn build_feed() -> Result<GtfsReference, GtfsError> {
     Ok(gtfs)
 }
 
-fn write_feed(dir: &PathBuf) -> Result<(), Box<dyn Error>> {
+fn write_feed(dir: &Path) -> Result<(), Box<dyn Error>> {
     let gtfs = build_feed()?;
     // the whole dataset at once: required tables always, the rest
     // when non-empty
@@ -60,8 +59,10 @@ fn write_feed(dir: &PathBuf) -> Result<(), Box<dyn Error>> {
 }
 
 fn main() {
-    let dir = env::temp_dir().join("gtfs_rs_write_feed");
-    match write_feed(&dir) {
+    // out_feed/ is listed in .gitignore, so the output never lands
+    // in version control
+    let dir = Path::new("out_feed");
+    match write_feed(dir) {
         Ok(()) => println!("dataset written to {}", dir.display()),
         Err(e) => eprintln!("failed to write feed: {e}"),
     }
