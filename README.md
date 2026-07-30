@@ -152,6 +152,39 @@ replacement for the canonical
 [MobilityData gtfs-validator](https://github.com/MobilityData/gtfs-validator),
 which covers hundreds of rules including best practices.
 
+## Serialization
+
+Writing feeds is built into the core too - no features, no extra dependencies (hand-rolled RFC 4180 CSV and GeoJSON output).
+`writers::write_dir` serializes a whole `GtfsReference` into an unpacked dataset directory: the five required tables are always written (header included even when empty), every other table only when it has records, `locations.geojson` when there are GTFS-Flex zones.
+Every one of the 31 CSV tables also has its named shortcut (`write_agencies`, `write_fare_products`, ...) over the generic `csv::write_path::<T>`, which serves custom extension tables as well.
+Runnable as [`examples/write_feed`](examples/write_feed/main.rs):
+`cargo run --example write_feed`.
+
+```rust
+use gtfs_rs::writers;
+use gtfs_rs::writers::csv;
+use gtfs_rs::{GtfsReference, Stop};
+
+fn main() {
+    let mut gtfs = GtfsReference::new();
+    gtfs.stops.push(Stop::new("A").with_name("Alpha").with_coordinates(55.751, 37.618));
+
+    // the whole dataset into a directory
+    match writers::write_dir(&gtfs, "out_feed") {
+        Ok(()) => println!("dataset written to out_feed/"),
+        Err(e) => eprintln!("failed to write feed: {e}"),
+    }
+
+    // or one table at a time via its named shortcut
+    match csv::write_stops(&gtfs.stops, "out_feed/stops.txt") {
+        Ok(()) => println!("stops.txt written"),
+        Err(e) => eprintln!("failed to write stops: {e}"),
+    }
+}
+```
+
+With the `zip` feature enabled, `writers::zip::write_zip` packs the same table selection into a deflate-compressed archive, and `write_zip_bytes` builds it in memory (e.g. to upload without touching the disk).
+
 ## Optional features
 
 - `parse` (off by default; keeps the default build dependency-free) -
@@ -217,23 +250,23 @@ which covers hundreds of rules including best practices.
   automatically; a single file reads as:
 
   ```rust
-  use gtfs_rs::parsers::{ParseError, geojson};
+  use gtfs_rs::parsers::geojson;
 
-  fn main() -> Result<(), ParseError> {
+  fn main() {
       match geojson::read_locations("tests/data/flex_feed/locations.geojson") {
           Ok(zones) => println!("{} on-demand zones", zones.len()),
           Err(e) => eprintln!("failed to read zones: {e}"),
       }
-      Ok(())
   }
   ```
 
 - `zip` (off by default; implies `parse`) - the
   `gtfs_rs::parsers::zip` module reading whole zipped feeds - the
-  form feeds are actually distributed in; adds the `zip` dependency.
-  Works from a path or from bytes already in memory (e.g. a fresh
-  HTTP download), and picks `locations.geojson` up when `geojson` is
-  enabled too. Runnable as
+  form feeds are actually distributed in - and the
+  `gtfs_rs::writers::zip` module packing them back; adds the `zip`
+  dependency. Works from a path or from bytes already in memory
+  (e.g. a fresh HTTP download), and picks `locations.geojson` up
+  when `geojson` is enabled too. Runnable as
   [`examples/read_zip_feed`](examples/read_zip_feed/main.rs):
   `cargo run --example read_zip_feed --features zip` - it packs the
   bundled sample feed in memory first, so no archive file is stored
@@ -252,10 +285,8 @@ which covers hundreds of rules including best practices.
 
 ## Scope
 
-The crate models the dataset; writing files is not implemented yet.
-Deliberately out of scope, but W.I.P.:
-
-- serialization (writing feeds back to CSV/GeoJSON);
+The crate covers the full GTFS Schedule lifecycle: model, parsing,
+validation and serialization.
 
 Don't think gonna do it, but maybe in future:
 - GTFS Realtime.

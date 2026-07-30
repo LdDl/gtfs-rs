@@ -172,9 +172,11 @@ fn zip_err(label: &str, e: ZipError) -> ParseError {
 
 #[cfg(test)]
 mod tests {
+    use std::env;
     use std::error::Error;
     use std::fs;
     use std::io::Write;
+    use std::process;
 
     use zip::CompressionMethod;
     use zip::write::SimpleFileOptions;
@@ -219,7 +221,7 @@ mod tests {
     #[test]
     fn test_read_zip_path_roundtrip() -> Result<(), Box<dyn Error>> {
         let bytes = zip_dir(FEED_DIR)?;
-        let path = std::env::temp_dir().join(format!("gtfs_rs_test_{}.zip", std::process::id()));
+        let path = env::temp_dir().join(format!("gtfs_rs_test_{}.zip", process::id()));
         fs::write(&path, &bytes)?;
         let result = read_zip(&path);
         fs::remove_file(&path)?;

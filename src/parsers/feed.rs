@@ -3,6 +3,8 @@
 //! `parsers::zip`. The shared [`TableSource`] abstraction keeps the
 //! list of tables in one place.
 
+#[cfg(feature = "geojson")]
+use std::fs;
 use std::fs::File;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -133,7 +135,7 @@ impl TableSource for DirSource {
         if !path.exists() {
             return Ok(None);
         }
-        match std::fs::read_to_string(&path) {
+        match fs::read_to_string(&path) {
             Ok(text) => Ok(Some(text)),
             Err(e) => Err(ParseError {
                 file: "locations.geojson".to_string(),
