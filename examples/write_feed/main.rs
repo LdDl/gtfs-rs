@@ -53,8 +53,9 @@ fn write_feed(dir: &Path) -> Result<(), Box<dyn Error>> {
     // the whole dataset at once: required tables always, the rest
     // when non-empty
     writers::write_dir(&gtfs, dir)?;
-    // or any single table through its named shortcut
-    csv::write_agencies(&gtfs.agencies, dir.join("agency.txt"))?;
+    // or any single table through its named shortcut - to any path,
+    // here next to the feed for comparison
+    csv::write_agencies(&gtfs.agencies, dir.join("agency_only.txt"))?;
     Ok(())
 }
 

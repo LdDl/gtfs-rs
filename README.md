@@ -175,9 +175,9 @@ fn main() {
         Err(e) => eprintln!("failed to write feed: {e}"),
     }
 
-    // or one table at a time via its named shortcut
-    match csv::write_stops(&gtfs.stops, "out_feed/stops.txt") {
-        Ok(()) => println!("stops.txt written"),
+    // or one table at a time via its named shortcut - to any path
+    match csv::write_stops(&gtfs.stops, "out_feed/stops_only.txt") {
+        Ok(()) => println!("stops_only.txt written"),
         Err(e) => eprintln!("failed to write stops: {e}"),
     }
 }
@@ -285,7 +285,7 @@ With the `zip` feature enabled, `writers::zip::write_zip` packs the same table s
 
 ## Scope
 
-The crate covers the full GTFS Schedule lifecycle: model, parsing,
+The crate covers the full GTFS Schedule lifecycle, I believe: model, parsing,
 validation and serialization.
 
 Don't think gonna do it, but maybe in future:
