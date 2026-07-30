@@ -35,6 +35,9 @@ pub enum ParseErrorKind {
     /// The JSON structure is malformed (`locations.geojson`)
     #[cfg(feature = "geojson")]
     Json(serde_json::Error),
+    /// The feed archive is malformed
+    #[cfg(feature = "zip")]
+    Zip(zip::result::ZipError),
     /// A required column is missing from the header
     MissingColumn,
     /// A column name appears more than once in the header
@@ -68,6 +71,8 @@ impl fmt::Display for ParseError {
             ParseErrorKind::Csv(e) => write!(f, ": {}", e),
             #[cfg(feature = "geojson")]
             ParseErrorKind::Json(e) => write!(f, ": invalid JSON: {}", e),
+            #[cfg(feature = "zip")]
+            ParseErrorKind::Zip(e) => write!(f, ": invalid zip archive: {}", e),
             ParseErrorKind::MissingColumn => {
                 write!(f, ": required column is missing")
             }
@@ -92,6 +97,8 @@ impl std::error::Error for ParseError {
             ParseErrorKind::Csv(e) => Some(e),
             #[cfg(feature = "geojson")]
             ParseErrorKind::Json(e) => Some(e),
+            #[cfg(feature = "zip")]
+            ParseErrorKind::Zip(e) => Some(e),
             ParseErrorKind::Model(e) => Some(e),
             _ => None,
         }

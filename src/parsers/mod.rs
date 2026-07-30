@@ -10,16 +10,18 @@
 //!   feature);
 //! - [`geojson`] - the GTFS-Flex `locations.geojson` zones
 //!   (`geojson` cargo feature, implies `parse`);
+//! - [`zip`] - whole feed archives (`zip` cargo feature, implies
+//!   `parse`);
 //! - [`read_dir`] - a whole unpacked feed directory, orchestrating
 //!   the format parsers above.
-//!
-//! Planned: `zip` (whole feed archives).
 
 pub mod csv;
 mod error;
 mod feed;
 #[cfg(feature = "geojson")]
 pub mod geojson;
+#[cfg(feature = "zip")]
+pub mod zip;
 
 pub use feed::read_dir;
 

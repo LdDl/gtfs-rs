@@ -1,9 +1,11 @@
-//! Whole-feed reading: orchestrates the per-format parsers
-//! ([`csv`](crate::parsers::csv), and
-//! `geojson` when that cargo feature is enabled) over an unpacked
-//! dataset directory.
+//! Whole-feed reading: orchestrates the per-format parsers over a
+//! feed container - an unpacked directory here, a zip archive in
+//! `parsers::zip`. The shared [`TableSource`] abstraction keeps the
+//! list of tables in one place.
 
-use std::path::Path;
+use std::fs::File;
+use std::io;
+use std::path::{Path, PathBuf};
 
 use crate::model::{
     Agency, Area, Attribution, BookingRule, Calendar, CalendarDate, FareAttributeV1,
@@ -11,9 +13,137 @@ use crate::model::{
     Frequency, Level, LocationGroup, LocationGroupStop, Network, Pathway, RiderCategory, Route,
     RouteNetwork, ShapePoint, Stop, StopArea, StopTime, Timeframe, Transfer, Translation, Trip,
 };
-use crate::parsers::ParseError;
-use crate::parsers::csv::{CsvRecord, read_path};
+use crate::parsers::csv::{self, CsvRecord};
+use crate::parsers::{ParseError, ParseErrorKind};
 use crate::reference::GtfsReference;
+
+/// A container of GTFS tables addressed by canonical file name.
+///
+/// Implemented by the unpacked-directory source here and by the zip
+/// source in `parsers::zip`, so [`read_tables`] can fill a
+/// [`GtfsReference`] from either without duplicating the table list.
+pub(crate) trait TableSource {
+    /// Opens one table by its canonical file name; `Ok(None)` when
+    /// the container has no such file.
+    fn open(&mut self, name: &str) -> Result<Option<Box<dyn io::Read + '_>>, ParseError>;
+
+    /// Reads the whole `locations.geojson` text; `Ok(None)` when the
+    /// container has no such file.
+    #[cfg(feature = "geojson")]
+    fn locations_text(&mut self) -> Result<Option<String>, ParseError>;
+}
+
+/// Fills a [`GtfsReference`] from any [`TableSource`].
+///
+/// The five required tables must be present; every other table is
+/// read when present and left empty otherwise. `feed_info.txt`
+/// contributes at most one record. With the `geojson` cargo feature
+/// enabled, a present `locations.geojson` is read as well.
+pub(crate) fn read_tables<S: TableSource>(source: &mut S) -> Result<GtfsReference, ParseError> {
+    let mut gtfs = GtfsReference::new();
+    // required tables
+    gtfs.agencies = required::<Agency, _>(source)?;
+    gtfs.stops = required::<Stop, _>(source)?;
+    gtfs.routes = required::<Route, _>(source)?;
+    gtfs.trips = required::<Trip, _>(source)?;
+    gtfs.stop_times = required::<StopTime, _>(source)?;
+    // conditionally required and optional tables
+    gtfs.calendar = optional::<Calendar, _>(source)?;
+    gtfs.calendar_dates = optional::<CalendarDate, _>(source)?;
+    gtfs.fare_attributes = optional::<FareAttributeV1, _>(source)?;
+    gtfs.fare_rules = optional::<FareRuleV1, _>(source)?;
+    gtfs.timeframes = optional::<Timeframe, _>(source)?;
+    gtfs.rider_categories = optional::<RiderCategory, _>(source)?;
+    gtfs.fare_media = optional::<FareMedia, _>(source)?;
+    gtfs.fare_products = optional::<FareProduct, _>(source)?;
+    gtfs.fare_leg_rules = optional::<FareLegRule, _>(source)?;
+    gtfs.fare_leg_join_rules = optional::<FareLegJoinRule, _>(source)?;
+    gtfs.fare_transfer_rules = optional::<FareTransferRule, _>(source)?;
+    gtfs.areas = optional::<Area, _>(source)?;
+    gtfs.stop_areas = optional::<StopArea, _>(source)?;
+    gtfs.networks = optional::<Network, _>(source)?;
+    gtfs.route_networks = optional::<RouteNetwork, _>(source)?;
+    gtfs.shapes = optional::<ShapePoint, _>(source)?;
+    gtfs.frequencies = optional::<Frequency, _>(source)?;
+    gtfs.transfers = optional::<Transfer, _>(source)?;
+    gtfs.pathways = optional::<Pathway, _>(source)?;
+    gtfs.levels = optional::<Level, _>(source)?;
+    gtfs.location_groups = optional::<LocationGroup, _>(source)?;
+    gtfs.location_group_stops = optional::<LocationGroupStop, _>(source)?;
+    gtfs.booking_rules = optional::<BookingRule, _>(source)?;
+    gtfs.translations = optional::<Translation, _>(source)?;
+    gtfs.feed_info = optional::<FeedInfo, _>(source)?.into_iter().next();
+    gtfs.attributions = optional::<Attribution, _>(source)?;
+    #[cfg(feature = "geojson")]
+    if let Some(text) = source.locations_text()? {
+        gtfs.locations = crate::parsers::geojson::read_locations_str("locations.geojson", &text)?;
+    }
+    Ok(gtfs)
+}
+
+/// Reads a required table; its absence is an error.
+fn required<T: CsvRecord, S: TableSource>(source: &mut S) -> Result<Vec<T>, ParseError> {
+    match source.open(T::FILE_NAME)? {
+        Some(reader) => csv::read(T::FILE_NAME, reader),
+        None => Err(ParseError {
+            file: T::FILE_NAME.to_string(),
+            line: 0,
+            field: None,
+            kind: ParseErrorKind::Io(io::Error::new(
+                io::ErrorKind::NotFound,
+                "required table is missing from the feed",
+            )),
+        }),
+    }
+}
+
+/// Reads an optional table; its absence yields an empty list.
+fn optional<T: CsvRecord, S: TableSource>(source: &mut S) -> Result<Vec<T>, ParseError> {
+    match source.open(T::FILE_NAME)? {
+        Some(reader) => csv::read(T::FILE_NAME, reader),
+        None => Ok(Vec::new()),
+    }
+}
+
+/// An unpacked feed directory as a [`TableSource`].
+struct DirSource {
+    dir: PathBuf,
+}
+
+impl TableSource for DirSource {
+    fn open(&mut self, name: &str) -> Result<Option<Box<dyn io::Read + '_>>, ParseError> {
+        let path = self.dir.join(name);
+        if !path.exists() {
+            return Ok(None);
+        }
+        match File::open(&path) {
+            Ok(file) => Ok(Some(Box::new(file))),
+            Err(e) => Err(ParseError {
+                file: name.to_string(),
+                line: 0,
+                field: None,
+                kind: ParseErrorKind::Io(e),
+            }),
+        }
+    }
+
+    #[cfg(feature = "geojson")]
+    fn locations_text(&mut self) -> Result<Option<String>, ParseError> {
+        let path = self.dir.join("locations.geojson");
+        if !path.exists() {
+            return Ok(None);
+        }
+        match std::fs::read_to_string(&path) {
+            Ok(text) => Ok(Some(text)),
+            Err(e) => Err(ParseError {
+                file: "locations.geojson".to_string(),
+                line: 0,
+                field: None,
+                kind: ParseErrorKind::Io(e),
+            }),
+        }
+    }
+}
 
 /// Reads a whole unpacked GTFS dataset directory into a
 /// [`GtfsReference`].
@@ -24,7 +154,8 @@ use crate::reference::GtfsReference;
 /// otherwise. `feed_info.txt` contributes at most one record. With
 /// the `geojson` cargo feature enabled, a present
 /// `locations.geojson` is read as well; without the feature the file
-/// is ignored.
+/// is ignored. For feeds distributed as archives see
+/// `parsers::zip::read_zip` (the `zip` cargo feature).
 ///
 /// # Arguments
 ///
@@ -47,59 +178,10 @@ use crate::reference::GtfsReference;
 /// }
 /// ```
 pub fn read_dir(dir: impl AsRef<Path>) -> Result<GtfsReference, ParseError> {
-    let dir = dir.as_ref();
-    let mut gtfs = GtfsReference::new();
-    // required tables
-    gtfs.agencies = read_path(dir.join(Agency::FILE_NAME))?;
-    gtfs.stops = read_path(dir.join(Stop::FILE_NAME))?;
-    gtfs.routes = read_path(dir.join(Route::FILE_NAME))?;
-    gtfs.trips = read_path(dir.join(Trip::FILE_NAME))?;
-    gtfs.stop_times = read_path(dir.join(StopTime::FILE_NAME))?;
-    // conditionally required and optional tables
-    gtfs.calendar = read_if_present::<Calendar>(dir)?;
-    gtfs.calendar_dates = read_if_present::<CalendarDate>(dir)?;
-    gtfs.fare_attributes = read_if_present::<FareAttributeV1>(dir)?;
-    gtfs.fare_rules = read_if_present::<FareRuleV1>(dir)?;
-    gtfs.timeframes = read_if_present::<Timeframe>(dir)?;
-    gtfs.rider_categories = read_if_present::<RiderCategory>(dir)?;
-    gtfs.fare_media = read_if_present::<FareMedia>(dir)?;
-    gtfs.fare_products = read_if_present::<FareProduct>(dir)?;
-    gtfs.fare_leg_rules = read_if_present::<FareLegRule>(dir)?;
-    gtfs.fare_leg_join_rules = read_if_present::<FareLegJoinRule>(dir)?;
-    gtfs.fare_transfer_rules = read_if_present::<FareTransferRule>(dir)?;
-    gtfs.areas = read_if_present::<Area>(dir)?;
-    gtfs.stop_areas = read_if_present::<StopArea>(dir)?;
-    gtfs.networks = read_if_present::<Network>(dir)?;
-    gtfs.route_networks = read_if_present::<RouteNetwork>(dir)?;
-    gtfs.shapes = read_if_present::<ShapePoint>(dir)?;
-    gtfs.frequencies = read_if_present::<Frequency>(dir)?;
-    gtfs.transfers = read_if_present::<Transfer>(dir)?;
-    gtfs.pathways = read_if_present::<Pathway>(dir)?;
-    gtfs.levels = read_if_present::<Level>(dir)?;
-    gtfs.location_groups = read_if_present::<LocationGroup>(dir)?;
-    gtfs.location_group_stops = read_if_present::<LocationGroupStop>(dir)?;
-    gtfs.booking_rules = read_if_present::<BookingRule>(dir)?;
-    gtfs.translations = read_if_present::<Translation>(dir)?;
-    gtfs.feed_info = read_if_present::<FeedInfo>(dir)?.into_iter().next();
-    gtfs.attributions = read_if_present::<Attribution>(dir)?;
-    #[cfg(feature = "geojson")]
-    {
-        let locations_path = dir.join("locations.geojson");
-        if locations_path.exists() {
-            gtfs.locations = crate::parsers::geojson::read_locations(locations_path)?;
-        }
-    }
-    Ok(gtfs)
-}
-
-/// Reads an optional table: an absent file yields an empty list.
-fn read_if_present<T: CsvRecord>(dir: &Path) -> Result<Vec<T>, ParseError> {
-    let path = dir.join(T::FILE_NAME);
-    if path.exists() {
-        read_path(path)
-    } else {
-        Ok(Vec::new())
-    }
+    let mut source = DirSource {
+        dir: dir.as_ref().to_path_buf(),
+    };
+    read_tables(&mut source)
 }
 
 #[cfg(test)]
@@ -149,5 +231,15 @@ mod tests {
         #[cfg(not(feature = "geojson"))]
         assert!(gtfs.locations.is_empty());
         Ok(())
+    }
+
+    #[test]
+    fn test_read_dir_missing_required_table() {
+        // the flex fixture's parent directory is not a feed
+        let Err(err) = read_dir(concat!(env!("CARGO_MANIFEST_DIR"), "/tests/data")) else {
+            panic!("expected a missing-required-table error");
+        };
+        assert_eq!(err.file, "agency.txt");
+        assert!(matches!(err.kind, ParseErrorKind::Io(_)));
     }
 }

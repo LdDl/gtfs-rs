@@ -47,6 +47,8 @@
 //! - `geojson` (off by default, implies `parse`) - the
 //!   `parsers::geojson` module reading GTFS-Flex
 //!   `locations.geojson`; adds the `serde_json` dependency.
+//! - `zip` (off by default, implies `parse`) - the `parsers::zip`
+//!   module reading whole zipped feeds; adds the `zip` dependency.
 //!
 //! # Examples
 //!

@@ -16,6 +16,8 @@ cargo add gtfs-rs
 cargo add gtfs-rs --features parse
 # with the CSV parser and the GTFS-Flex locations.geojson reader:
 cargo add gtfs-rs --features geojson
+# everything: CSV tables, locations.geojson and zipped feeds:
+cargo add gtfs-rs --features geojson,zip
 ```
 
 Or manually in `Cargo.toml`:
@@ -196,6 +198,28 @@ fn main() {
   }
   ```
 
+- `zip` (off by default; implies `parse`) - the
+  `gtfs_rs::parsers::zip` module reading whole zipped feeds - the
+  form feeds are actually distributed in; adds the `zip` dependency.
+  Works from a path or from bytes already in memory (e.g. a fresh
+  HTTP download), and picks `locations.geojson` up when `geojson` is
+  enabled too. Runnable as
+  [`examples/read_zip_feed`](examples/read_zip_feed/main.rs):
+  `cargo run --example read_zip_feed --features zip` - it packs the
+  bundled sample feed in memory first, so no archive file is stored
+  in the repository.
+
+  ```rust
+  use gtfs_rs::parsers::zip;
+
+  fn main() {
+      match zip::read_zip("feed.zip") {
+          Ok(gtfs) => println!("{} trips", gtfs.trips.len()),
+          Err(e) => eprintln!("failed to read the archive: {e}"),
+      }
+  }
+  ```
+
 ## Scope
 
 The crate models the dataset; writing files is not implemented yet.
@@ -203,7 +227,6 @@ Deliberately out of scope, but W.I.P.:
 
 - serialization (writing feeds back to CSV/GeoJSON);
 - feed validation beyond basic type safety;
-- reading zipped feeds (a `zip` parser next to `csv`/`geojson`);
 
 Don't think gonna do it, but maybe:
 - GTFS Realtime.
