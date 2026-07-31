@@ -324,25 +324,28 @@ fn check_feed_info(gtfs: &GtfsReference, issues: &mut Vec<ValidationIssue>) {
     }
 }
 
-/// A trip without any stop time cannot be ridden - suspicious, but
-/// only a warning.
+/// A trip with fewer than two stop times cannot be ridden anywhere -
+/// suspicious, but only a warning. GTFS-Flex zone trips are covered:
+/// they still use two stop time records (pickup and drop-off).
 fn check_trips_without_stop_times(gtfs: &GtfsReference, issues: &mut Vec<ValidationIssue>) {
-    let served: HashSet<&str> = gtfs
-        .stop_times
-        .iter()
-        .map(|st| st.trip_id.as_str())
-        .collect();
+    let mut served: HashMap<&str, u32> = HashMap::new();
+    for stop_time in &gtfs.stop_times {
+        *served.entry(stop_time.trip_id.as_str()).or_default() += 1;
+    }
     for trip in &gtfs.trips {
-        if !served.contains(trip.trip_id.as_str()) {
-            issues.push(ValidationIssue {
-                severity: Severity::Warning,
-                file: "trips.txt",
-                entity_id: Some(trip.trip_id.clone()),
-                field: None,
-                rule: Rule::TripWithoutStopTimes,
-                message: "trip has no stop times".to_string(),
-            });
-        }
+        let message = match served.get(trip.trip_id.as_str()).copied().unwrap_or(0) {
+            0 => "trip has no stop times",
+            1 => "trip has a single stop time",
+            _ => continue,
+        };
+        issues.push(ValidationIssue {
+            severity: Severity::Warning,
+            file: "trips.txt",
+            entity_id: Some(trip.trip_id.clone()),
+            field: None,
+            rule: Rule::TripWithoutStopTimes,
+            message: message.to_string(),
+        });
     }
 }
 
@@ -352,7 +355,7 @@ mod tests {
     use crate::model::TableName;
     use crate::model::{
         Agency, CalendarDate, ExceptionType, Frequency, Location, LocationGeometry, LocationGroup,
-        Route, RouteNetwork, RouteType, ShapePoint, Stop, StopTime, Translation,
+        Route, RouteNetwork, RouteType, ShapePoint, Stop, StopTime, Translation, Trip,
     };
     use crate::reference::GtfsReference;
     use crate::validate::report::{Rule, Severity};
@@ -489,6 +492,37 @@ mod tests {
                 .iter()
                 .any(|issue| issue.rule == Rule::OverlappingFrequency
                     && issue.entity_id.as_deref() == Some("t1"))
+        );
+    }
+
+    #[test]
+    fn test_trips_with_fewer_than_two_stop_times() {
+        let mut gtfs = GtfsReference::new();
+        gtfs.trips.push(Trip::new("empty", "L1", "svc"));
+        gtfs.trips.push(Trip::new("single", "L1", "svc"));
+        gtfs.trips.push(Trip::new("full", "L1", "svc"));
+        gtfs.stop_times.push(StopTime::new("single", "A", 1, 3600));
+        gtfs.stop_times.push(StopTime::new("full", "A", 1, 3600));
+        gtfs.stop_times.push(StopTime::new("full", "B", 2, 3700));
+
+        let flagged: Vec<(Option<String>, String)> = gtfs
+            .validate()
+            .into_iter()
+            .filter(|issue| issue.rule == Rule::TripWithoutStopTimes)
+            .map(|issue| (issue.entity_id, issue.message))
+            .collect();
+        assert_eq!(
+            flagged,
+            [
+                (
+                    Some("empty".to_string()),
+                    "trip has no stop times".to_string()
+                ),
+                (
+                    Some("single".to_string()),
+                    "trip has a single stop time".to_string()
+                ),
+            ]
         );
     }
 

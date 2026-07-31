@@ -25,6 +25,7 @@ impl GtfsReference {
     /// // references a route and a service that do not exist
     /// gtfs.trips.push(Trip::new("t0", "NO_ROUTE", "NO_SERVICE"));
     /// gtfs.stop_times.push(StopTime::new("t0", "NO_STOP", 1, 8 * 3600));
+    /// gtfs.stop_times.push(StopTime::new("t0", "NO_STOP", 2, 9 * 3600));
     ///
     /// let report = gtfs.validate();
     /// assert!(!report.is_valid());

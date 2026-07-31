@@ -3,6 +3,8 @@
 //! [`ValidationReport`].
 
 use std::fmt;
+use std::slice;
+use std::vec;
 
 /// How serious a validation issue is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -84,7 +86,8 @@ pub enum Rule {
     NetworkIdConflict,
     /// `translations.txt` is present but `feed_info.txt` is missing
     MissingFeedInfo,
-    /// A trip has no stop times at all
+    /// A trip has fewer than two stop times: none at all, or only a
+    /// single one
     TripWithoutStopTimes,
     /// Two `frequencies.txt` windows of the same trip overlap
     OverlappingFrequency,
@@ -94,6 +97,23 @@ pub enum Rule {
     /// `arrival_time` is missing on the first or last stop time of
     /// a trip
     MissingFirstLastArrivalTime,
+    /// `transfers.from_stop_id` or `to_stop_id` is missing for a
+    /// `transfer_type` that requires the stop pair (0-3)
+    MissingTransferStop,
+    /// `transfers.from_trip_id` or `to_trip_id` is missing for an
+    /// in-seat `transfer_type` (4 or 5)
+    MissingTransferTrip,
+    /// A pathway endpoint (`from_stop_id`/`to_stop_id`) references
+    /// a station (`location_type` 1)
+    PathwayEndpointIsStation,
+    /// An exit gate pathway (`pathway_mode` 7) is bidirectional
+    BidirectionalExitGate,
+    /// A `booking_rules.txt` field required by the record's
+    /// `booking_type` is missing
+    MissingBookingField,
+    /// A `booking_rules.txt` field forbidden for the record's
+    /// `booking_type` is set
+    ForbiddenBookingField,
 }
 
 /// One problem found by validation, with a full trace to its place:
@@ -237,6 +257,54 @@ impl ValidationReport {
         self.issues
             .iter()
             .filter(|issue| issue.severity == Severity::Warning)
+    }
+}
+
+/// Borrowing iteration over every issue, in detection order:
+/// `for issue in &report`.
+///
+/// # Examples
+///
+/// ```
+/// use gtfs_rs::{GtfsReference, Route, RouteType};
+///
+/// let mut gtfs = GtfsReference::new();
+/// // no name
+/// gtfs.routes.push(Route::new("L1", RouteType::Bus));
+/// let report = gtfs.validate();
+/// for issue in &report {
+///     println!("{issue}");
+/// }
+/// ```
+impl<'a> IntoIterator for &'a ValidationReport {
+    type Item = &'a ValidationIssue;
+    type IntoIter = slice::Iter<'a, ValidationIssue>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.issues.iter()
+    }
+}
+
+/// Consuming iteration over every issue, in detection order - e.g.
+/// to collect the issues into another structure.
+///
+/// # Examples
+///
+/// ```
+/// use gtfs_rs::{GtfsReference, Route, RouteType, ValidationIssue};
+///
+/// let mut gtfs = GtfsReference::new();
+/// // no name
+/// gtfs.routes.push(Route::new("L1", RouteType::Bus));
+/// let issues: Vec<ValidationIssue> = gtfs.validate().into_iter().collect();
+/// assert!(!issues.is_empty());
+/// ```
+impl IntoIterator for ValidationReport {
+    type Item = ValidationIssue;
+    type IntoIter = vec::IntoIter<ValidationIssue>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.issues.into_iter()
     }
 }
 

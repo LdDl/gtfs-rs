@@ -348,22 +348,27 @@ pub fn check(gtfs: &GtfsReference, issues: &mut Vec<ValidationIssue>) {
     }
 
     for pathway in &gtfs.pathways {
-        req(
-            issues,
-            "pathways.txt",
-            &pathway.pathway_id,
-            "from_stop_id",
-            &pathway.from_stop_id,
-            &ids.stops,
-        );
-        req(
-            issues,
-            "pathways.txt",
-            &pathway.pathway_id,
-            "to_stop_id",
-            &pathway.to_stop_id,
-            &ids.stops,
-        );
+        for (field, value) in [
+            ("from_stop_id", &pathway.from_stop_id),
+            ("to_stop_id", &pathway.to_stop_id),
+        ] {
+            if !ids.stops.contains(value.as_str()) {
+                issues.push(unknown("pathways.txt", &pathway.pathway_id, field, value));
+            } else if ids.stations.contains(value.as_str()) {
+                issues.push(ValidationIssue {
+                    severity: Severity::Error,
+                    file: "pathways.txt",
+                    entity_id: Some(pathway.pathway_id.clone()),
+                    field: Some(field.to_string()),
+                    rule: Rule::PathwayEndpointIsStation,
+                    message: format!(
+                        "{} `{}` is a station (location_type 1); pathway endpoints must be \
+                         platforms, entrances, generic nodes or boarding areas",
+                        field, value
+                    ),
+                });
+            }
+        }
     }
 
     for rule in &gtfs.fare_rules {
@@ -689,8 +694,8 @@ fn unknown(file: &'static str, entity_id: &str, field: &str, value: &str) -> Val
 #[cfg(test)]
 mod tests {
     use crate::model::{
-        Agency, Attribution, FareRuleV1, LocationType, Route, RouteType, Stop, StopTime, Timeframe,
-        Trip,
+        Agency, Attribution, FareRuleV1, LocationType, Pathway, PathwayMode, Route, RouteType,
+        Stop, StopTime, Timeframe, Trip,
     };
     use crate::reference::GtfsReference;
     use crate::validate::report::Rule;
@@ -853,6 +858,56 @@ mod tests {
                 .iter()
                 .any(|issue| issue.rule == Rule::ParentStationNotStation
                     && issue.entity_id.as_deref() == Some("E1"))
+        );
+    }
+
+    #[test]
+    fn test_pathway_endpoints_must_not_be_stations() {
+        let mut gtfs = GtfsReference::new();
+        gtfs.stops.push(
+            Stop::new("STA")
+                .with_name("Station")
+                .with_coordinates(0.0, 0.0)
+                .with_location_type(LocationType::Station),
+        );
+        gtfs.stops.push(
+            Stop::new("PLAT")
+                .with_name("Platform")
+                .with_coordinates(0.0, 0.0)
+                .with_parent_station("STA"),
+        );
+        gtfs.stops.push(
+            Stop::new("E1")
+                .with_name("Entrance")
+                .with_coordinates(0.0, 0.0)
+                .with_location_type(LocationType::EntranceExit)
+                .with_parent_station("STA"),
+        );
+        gtfs.pathways.push(Pathway::new(
+            "pw1",
+            "STA",
+            "PLAT",
+            PathwayMode::Walkway,
+            true,
+        ));
+        gtfs.pathways.push(Pathway::new(
+            "pw2",
+            "E1",
+            "PLAT",
+            PathwayMode::Walkway,
+            true,
+        ));
+
+        let flagged: Vec<(Option<String>, Option<String>)> = gtfs
+            .validate()
+            .into_iter()
+            .filter(|issue| issue.rule == Rule::PathwayEndpointIsStation)
+            .map(|issue| (issue.entity_id, issue.field))
+            .collect();
+        // only the station endpoint of pw1 is illegal
+        assert_eq!(
+            flagged,
+            [(Some("pw1".to_string()), Some("from_stop_id".to_string()))]
         );
     }
 
