@@ -36,6 +36,9 @@ pub enum Rule {
     /// references a location that is not a stop/platform
     /// (`location_type` 0)
     ParentStationNotPlatform,
+    /// A `stop_times.stop_id` references a location that is not a
+    /// stop/platform (`location_type` 0)
+    StopTimeStopNotPlatform,
     /// Neither `route_short_name` nor `route_long_name` is set
     MissingRouteName,
     /// A stop/platform, station or entrance has no `stop_name`

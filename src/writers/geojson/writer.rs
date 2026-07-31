@@ -235,8 +235,15 @@ fn push_polygon(out: &mut String, rings: &[Vec<[f64; 2]>]) {
     out.push(']');
 }
 
-/// Appends one `[lon, lat]` coordinate pair.
+/// Appends one `[lon, lat]` coordinate pair. Coordinates must be
+/// finite: JSON has no representation for NaN/infinity, so such
+/// values would render the output unparsable (the crate's own
+/// parsers never produce them).
 fn push_point(out: &mut String, lon: f64, lat: f64) {
+    debug_assert!(
+        lon.is_finite() && lat.is_finite(),
+        "non-finite coordinates produce invalid JSON"
+    );
     out.push('[');
     out.push_str(&lon.to_string());
     out.push_str(", ");

@@ -242,6 +242,11 @@ impl<R: Read> LimitedRead<R> {
 
 impl<R: Read> Read for LimitedRead<R> {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        // per the Read contract an empty buffer always reads Ok(0);
+        // without this guard the probe below could consume a byte
+        if buf.is_empty() {
+            return Ok(0);
+        }
         if self.remaining == 0 {
             let mut probe = [0u8; 1];
             if self.inner.read(&mut probe)? > 0 {
@@ -394,6 +399,21 @@ mod tests {
         };
         assert_eq!(err.kind(), io::ErrorKind::InvalidData);
         assert!(err.to_string().contains("zip bomb"));
+    }
+
+    #[test]
+    fn test_limited_read_empty_buffer_after_exhaustion() -> Result<(), Box<dyn Error>> {
+        let mut reader = LimitedRead::new(&[7u8; 10][..], 5);
+        let mut buf = [0u8; 5];
+        reader.read_exact(&mut buf)?;
+        // the Read contract: an empty buffer reads Ok(0) and must
+        // not consume the probe byte
+        assert_eq!(reader.read(&mut [])?, 0);
+        let Err(err) = reader.read(&mut [0u8; 1]) else {
+            panic!("expected an over-budget error");
+        };
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        Ok(())
     }
 
     #[test]

@@ -168,14 +168,21 @@ pub fn check(gtfs: &GtfsReference, issues: &mut Vec<ValidationIssue>) {
             &ids.trips,
         );
         if let Some(stop_id) = &stop_time.stop_id {
-            req(
-                issues,
-                "stop_times.txt",
-                &entity,
-                "stop_id",
-                stop_id,
-                &ids.stops,
-            );
+            if !ids.stops.contains(stop_id.as_str()) {
+                issues.push(unknown("stop_times.txt", &entity, "stop_id", stop_id));
+            } else if !ids.platforms.contains(stop_id.as_str()) {
+                issues.push(ValidationIssue {
+                    severity: Severity::Error,
+                    file: "stop_times.txt",
+                    entity_id: Some(entity.clone()),
+                    field: Some("stop_id".to_string()),
+                    rule: Rule::StopTimeStopNotPlatform,
+                    message: format!(
+                        "stop_id `{}` is not a stop/platform (location_type 0)",
+                        stop_id
+                    ),
+                });
+            }
         }
         if let Some(group) = &stop_time.location_group_id {
             req(
@@ -616,7 +623,11 @@ pub fn check(gtfs: &GtfsReference, issues: &mut Vec<ValidationIssue>) {
             .attribution_id
             .clone()
             .unwrap_or_else(|| attribution.organization_name.clone());
-        if let Some(agency_id) = &attribution.agency_id {
+        // gated like routes/fare_attributes: with a single id-less
+        // agency the id set is empty and references are unverifiable
+        if !ids.agencies.is_empty()
+            && let Some(agency_id) = &attribution.agency_id
+        {
             req(
                 issues,
                 "attributions.txt",
@@ -678,7 +689,8 @@ fn unknown(file: &'static str, entity_id: &str, field: &str, value: &str) -> Val
 #[cfg(test)]
 mod tests {
     use crate::model::{
-        FareRuleV1, LocationType, Route, RouteType, Stop, StopTime, Timeframe, Trip,
+        Agency, Attribution, FareRuleV1, LocationType, Route, RouteType, Stop, StopTime, Timeframe,
+        Trip,
     };
     use crate::reference::GtfsReference;
     use crate::validate::report::Rule;
@@ -700,6 +712,44 @@ mod tests {
             .count();
         // trip route, trip service, stop_time stop
         assert_eq!(unknown_count, 3);
+    }
+
+    #[test]
+    fn test_stop_time_stop_must_be_platform() {
+        let mut gtfs = GtfsReference::new();
+        gtfs.stops.push(
+            Stop::new("STA")
+                .with_name("Station")
+                .with_coordinates(0.0, 0.0)
+                .with_location_type(LocationType::Station),
+        );
+        gtfs.stop_times.push(StopTime::new("t0", "STA", 1, 3600));
+
+        let report = gtfs.validate();
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|issue| issue.rule == Rule::StopTimeStopNotPlatform)
+        );
+    }
+
+    #[test]
+    fn test_agency_refs_skipped_for_single_idless_agency() {
+        let mut gtfs = GtfsReference::new();
+        gtfs.agencies
+            .push(Agency::new("Demo", "https://demo.example", "UTC"));
+        let mut attribution = Attribution::new("Org");
+        attribution.agency_id = Some("demo".to_string());
+        gtfs.attributions.push(attribution);
+
+        let report = gtfs.validate();
+        assert!(
+            !report
+                .issues()
+                .iter()
+                .any(|issue| issue.rule == Rule::UnknownReference)
+        );
     }
 
     #[test]
