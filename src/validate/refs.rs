@@ -12,6 +12,8 @@ struct Ids<'a> {
     agencies: HashSet<&'a str>,
     stops: HashSet<&'a str>,
     stations: HashSet<&'a str>,
+    platforms: HashSet<&'a str>,
+    zones: HashSet<&'a str>,
     routes: HashSet<&'a str>,
     trips: HashSet<&'a str>,
     services: HashSet<&'a str>,
@@ -44,6 +46,17 @@ impl<'a> Ids<'a> {
                 .iter()
                 .filter(|s| s.location_type == LocationType::Station)
                 .map(|s| s.stop_id.as_str())
+                .collect(),
+            platforms: gtfs
+                .stops
+                .iter()
+                .filter(|s| s.location_type == LocationType::StopOrPlatform)
+                .map(|s| s.stop_id.as_str())
+                .collect(),
+            zones: gtfs
+                .stops
+                .iter()
+                .filter_map(|s| s.zone_id.as_deref())
                 .collect(),
             routes: gtfs.routes.iter().map(|r| r.route_id.as_str()).collect(),
             trips: gtfs.trips.iter().map(|t| t.trip_id.as_str()).collect(),
@@ -213,15 +226,41 @@ pub fn check(gtfs: &GtfsReference, issues: &mut Vec<ValidationIssue>) {
                     "parent_station",
                     parent,
                 ));
-            } else if !ids.stations.contains(parent.as_str()) {
-                issues.push(ValidationIssue {
-                    severity: Severity::Error,
-                    file: "stops.txt",
-                    entity_id: Some(stop.stop_id.clone()),
-                    field: Some("parent_station".to_string()),
-                    rule: Rule::ParentStationNotStation,
-                    message: format!("parent_station `{}` is not a station", parent),
-                });
+            } else {
+                match stop.location_type {
+                    LocationType::BoardingArea => {
+                        if !ids.platforms.contains(parent.as_str()) {
+                            issues.push(ValidationIssue {
+                                severity: Severity::Error,
+                                file: "stops.txt",
+                                entity_id: Some(stop.stop_id.clone()),
+                                field: Some("parent_station".to_string()),
+                                rule: Rule::ParentStationNotPlatform,
+                                message: format!(
+                                    "parent_station `{}` of a boarding area is not a platform",
+                                    parent
+                                ),
+                            });
+                        }
+                    }
+                    LocationType::StopOrPlatform
+                    | LocationType::EntranceExit
+                    | LocationType::GenericNode => {
+                        if !ids.stations.contains(parent.as_str()) {
+                            issues.push(ValidationIssue {
+                                severity: Severity::Error,
+                                file: "stops.txt",
+                                entity_id: Some(stop.stop_id.clone()),
+                                field: Some("parent_station".to_string()),
+                                rule: Rule::ParentStationNotStation,
+                                message: format!("parent_station `{}` is not a station", parent),
+                            });
+                        }
+                    }
+                    // a station must not have a parent at all,
+                    // reported by ForbiddenParentStation
+                    LocationType::Station => {}
+                }
             }
         }
         if let Some(level_id) = &stop.level_id {
@@ -271,6 +310,17 @@ pub fn check(gtfs: &GtfsReference, issues: &mut Vec<ValidationIssue>) {
             "trip_id",
             &frequency.trip_id,
             &ids.trips,
+        );
+    }
+
+    for timeframe in &gtfs.timeframes {
+        req(
+            issues,
+            "timeframes.txt",
+            &timeframe.timeframe_group_id,
+            "service_id",
+            &timeframe.service_id,
+            &ids.services,
         );
     }
 
@@ -327,6 +377,22 @@ pub fn check(gtfs: &GtfsReference, issues: &mut Vec<ValidationIssue>) {
                 route_id,
                 &ids.routes,
             );
+        }
+        for (field, value) in [
+            ("origin_id", &rule.origin_id),
+            ("destination_id", &rule.destination_id),
+            ("contains_id", &rule.contains_id),
+        ] {
+            if let Some(value) = value {
+                req(
+                    issues,
+                    "fare_rules.txt",
+                    &rule.fare_id,
+                    field,
+                    value,
+                    &ids.zones,
+                );
+            }
         }
     }
 
@@ -611,7 +677,9 @@ fn unknown(file: &'static str, entity_id: &str, field: &str, value: &str) -> Val
 
 #[cfg(test)]
 mod tests {
-    use crate::model::{Route, RouteType, Stop, StopTime, Trip};
+    use crate::model::{
+        FareRuleV1, LocationType, Route, RouteType, Stop, StopTime, Timeframe, Trip,
+    };
     use crate::reference::GtfsReference;
     use crate::validate::report::Rule;
 
@@ -653,5 +721,118 @@ mod tests {
                 .iter()
                 .any(|issue| issue.rule == Rule::ParentStationNotStation)
         );
+    }
+
+    #[test]
+    fn test_station_platform_boarding_area_chain_is_valid() {
+        let mut gtfs = GtfsReference::new();
+        gtfs.stops.push(
+            Stop::new("STA")
+                .with_name("Station")
+                .with_coordinates(0.0, 0.0)
+                .with_location_type(LocationType::Station),
+        );
+        gtfs.stops.push(
+            Stop::new("PLAT")
+                .with_name("Platform")
+                .with_coordinates(0.0, 0.0)
+                .with_parent_station("STA"),
+        );
+        gtfs.stops.push(
+            Stop::new("BA")
+                .with_location_type(LocationType::BoardingArea)
+                .with_parent_station("PLAT"),
+        );
+
+        let report = gtfs.validate();
+        assert!(report.issues().is_empty());
+    }
+
+    #[test]
+    fn test_boarding_area_parent_must_be_platform() {
+        let mut gtfs = GtfsReference::new();
+        gtfs.stops.push(
+            Stop::new("STA")
+                .with_name("Station")
+                .with_coordinates(0.0, 0.0)
+                .with_location_type(LocationType::Station),
+        );
+        gtfs.stops.push(
+            Stop::new("BA")
+                .with_location_type(LocationType::BoardingArea)
+                .with_parent_station("STA"),
+        );
+
+        let report = gtfs.validate();
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|issue| issue.rule == Rule::ParentStationNotPlatform
+                    && issue.entity_id.as_deref() == Some("BA"))
+        );
+    }
+
+    #[test]
+    fn test_entrance_parent_must_be_station() {
+        let mut gtfs = GtfsReference::new();
+        gtfs.stops.push(
+            Stop::new("STA")
+                .with_name("Station")
+                .with_coordinates(0.0, 0.0)
+                .with_location_type(LocationType::Station),
+        );
+        gtfs.stops.push(
+            Stop::new("PLAT")
+                .with_name("Platform")
+                .with_coordinates(0.0, 0.0)
+                .with_parent_station("STA"),
+        );
+        gtfs.stops.push(
+            Stop::new("E1")
+                .with_name("Entrance")
+                .with_coordinates(0.0, 0.0)
+                .with_location_type(LocationType::EntranceExit)
+                .with_parent_station("PLAT"),
+        );
+
+        let report = gtfs.validate();
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|issue| issue.rule == Rule::ParentStationNotStation
+                    && issue.entity_id.as_deref() == Some("E1"))
+        );
+    }
+
+    #[test]
+    fn test_timeframe_service_and_fare_rule_zones() {
+        let mut gtfs = GtfsReference::new();
+        gtfs.stops.push(
+            Stop::new("A")
+                .with_name("A")
+                .with_coordinates(0.0, 0.0)
+                .with_zone_id("Z1"),
+        );
+        gtfs.timeframes.push(Timeframe::new("peak", "NO_SVC"));
+        let mut rule = FareRuleV1::new("base");
+        rule.origin_id = Some("Z1".to_string());
+        rule.destination_id = Some("NO_ZONE".to_string());
+        rule.contains_id = Some("NO_ZONE".to_string());
+        gtfs.fare_rules.push(rule);
+
+        let report = gtfs.validate();
+        let fields: Vec<&str> = report
+            .issues()
+            .iter()
+            .filter(|issue| issue.rule == Rule::UnknownReference)
+            .filter_map(|issue| issue.field.as_deref())
+            .collect();
+        assert!(fields.contains(&"service_id"));
+        assert!(fields.contains(&"destination_id"));
+        assert!(fields.contains(&"contains_id"));
+        // Z1 exists on a stop, so origin_id resolves
+        assert!(!fields.contains(&"origin_id"));
     }
 }

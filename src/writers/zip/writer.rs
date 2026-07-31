@@ -6,6 +6,7 @@ use std::path::Path;
 use std::slice;
 
 use zip::CompressionMethod;
+use zip::DateTime;
 use zip::ZipWriter;
 use zip::write::SimpleFileOptions;
 
@@ -99,7 +100,11 @@ fn write_archive<W: Write + Seek>(
     out: W,
 ) -> Result<(), WriteError> {
     let mut writer = ZipWriter::new(out);
-    let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+    // the fixed epoch timestamp keeps archives byte-reproducible
+    // even when a downstream crate enables zip's `time` feature
+    let options = SimpleFileOptions::default()
+        .compression_method(CompressionMethod::Deflated)
+        .last_modified_time(DateTime::default());
 
     // required tables - always included, header only when empty
     required(&mut writer, options, label, &gtfs.agencies)?;

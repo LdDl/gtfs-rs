@@ -1,7 +1,7 @@
 //! Reading functions for zipped GTFS feeds.
 
 use std::fs::File;
-use std::io::{Cursor, Read, Seek};
+use std::io::{self, Cursor, Read, Seek};
 use std::path::Path;
 
 use zip::ZipArchive;
@@ -11,12 +11,20 @@ use crate::parsers::feed::{TableSource, read_tables};
 use crate::parsers::{ParseError, ParseErrorKind};
 use crate::reference::GtfsReference;
 
+/// Upper bound on the decompressed size of a single archive entry,
+/// guarding against zip bombs. Generous because large real-world
+/// `stop_times.txt` files exist.
+const MAX_DECOMPRESSED_BYTES: u64 = 4 * 1024 * 1024 * 1024;
+
 /// Reads a zipped GTFS feed from a file path into a
 /// [`GtfsReference`].
 ///
 /// The archive is expected to hold the tables at its root, as the
-/// specification requires. The required tables and the handling of
-/// optional ones are the same as for
+/// specification requires; an archive that keeps every entry inside
+/// one shared top-level folder (as the macOS Finder "Compress"
+/// command produces) is accepted as well. Each entry is decompressed
+/// up to a 4 GiB cap to guard against zip bombs. The required tables
+/// and the handling of optional ones are the same as for
 /// [`read_dir`](crate::parsers::read_dir); with the `geojson` cargo
 /// feature enabled, a bundled `locations.geojson` is read as well.
 ///
@@ -62,12 +70,15 @@ pub fn read_zip(path: impl AsRef<Path>) -> Result<GtfsReference, ParseError> {
         Ok(archive) => archive,
         Err(e) => return Err(zip_err(&label, e)),
     };
-    let mut source = ZipSource { label, archive };
+    let mut source = ZipSource::new(label, archive);
     read_tables(&mut source)
 }
 
 /// Reads a zipped GTFS feed from bytes already in memory - e.g. an
 /// archive just downloaded over HTTP, without touching the disk.
+///
+/// The single-top-level-folder tolerance and the per-entry
+/// decompression cap of [`read_zip`] apply here as well.
 ///
 /// # Arguments
 ///
@@ -118,10 +129,7 @@ pub fn read_zip_bytes(archive_label: &str, bytes: &[u8]) -> Result<GtfsReference
         Ok(archive) => archive,
         Err(e) => return Err(zip_err(archive_label, e)),
     };
-    let mut source = ZipSource {
-        label: archive_label.to_string(),
-        archive,
-    };
+    let mut source = ZipSource::new(archive_label.to_string(), archive);
     read_tables(&mut source)
 }
 
@@ -129,26 +137,58 @@ pub fn read_zip_bytes(archive_label: &str, bytes: &[u8]) -> Result<GtfsReference
 struct ZipSource<R: Read + Seek> {
     label: String,
     archive: ZipArchive<R>,
+    /// Common top-level folder shared by every data entry (with a
+    /// trailing '/'), if the archive keeps the feed in a subfolder.
+    prefix: Option<String>,
+}
+
+impl<R: Read + Seek> ZipSource<R> {
+    fn new(label: String, archive: ZipArchive<R>) -> Self {
+        let prefix = detect_prefix(&archive);
+        ZipSource {
+            label,
+            archive,
+            prefix,
+        }
+    }
+
+    /// Resolves a table name to its archive index: the plain name
+    /// first, then behind the detected common folder prefix.
+    fn entry_index(&self, name: &str) -> Option<usize> {
+        if let Some(index) = self.archive.index_for_name(name) {
+            return Some(index);
+        }
+        let prefix = self.prefix.as_ref()?;
+        self.archive.index_for_name(&format!("{prefix}{name}"))
+    }
 }
 
 impl<R: Read + Seek> TableSource for ZipSource<R> {
     fn open(&mut self, name: &str) -> Result<Option<Box<dyn Read + '_>>, ParseError> {
-        match self.archive.by_name(name) {
-            Ok(entry) => Ok(Some(Box::new(entry))),
-            Err(ZipError::FileNotFound) => Ok(None),
+        let Some(index) = self.entry_index(name) else {
+            return Ok(None);
+        };
+        match self.archive.by_index(index) {
+            Ok(entry) => Ok(Some(Box::new(LimitedRead::new(
+                entry,
+                MAX_DECOMPRESSED_BYTES,
+            )))),
             Err(e) => Err(zip_err(&self.label, e)),
         }
     }
 
     #[cfg(feature = "geojson")]
     fn locations_text(&mut self) -> Result<Option<String>, ParseError> {
-        let mut entry = match self.archive.by_name("locations.geojson") {
+        let Some(index) = self.entry_index("locations.geojson") else {
+            return Ok(None);
+        };
+        let entry = match self.archive.by_index(index) {
             Ok(entry) => entry,
-            Err(ZipError::FileNotFound) => return Ok(None),
             Err(e) => return Err(zip_err(&self.label, e)),
         };
         let mut text = String::new();
-        if let Err(e) = entry.read_to_string(&mut text) {
+        let mut limited = LimitedRead::new(entry, MAX_DECOMPRESSED_BYTES);
+        if let Err(e) = limited.read_to_string(&mut text) {
             return Err(ParseError {
                 file: "locations.geojson".to_string(),
                 line: 0,
@@ -157,6 +197,71 @@ impl<R: Read + Seek> TableSource for ZipSource<R> {
             });
         }
         Ok(Some(text))
+    }
+}
+
+/// Detects one top-level folder shared by every data entry of the
+/// archive, as produced by e.g. the macOS Finder "Compress" command.
+/// Directory entries and `__MACOSX/` junk are ignored; the result
+/// keeps the trailing '/'. `None` when any entry sits at the root or
+/// the entries disagree on the first path segment.
+fn detect_prefix<R: Read + Seek>(archive: &ZipArchive<R>) -> Option<String> {
+    let mut prefix: Option<&str> = None;
+    for name in archive.file_names() {
+        if name.ends_with('/') || name.starts_with("__MACOSX/") {
+            continue;
+        }
+        let (first, _) = name.split_once('/')?;
+        match prefix {
+            Some(seen) if seen != first => return None,
+            _ => prefix = Some(first),
+        }
+    }
+    prefix.map(|p| format!("{p}/"))
+}
+
+/// A reader that fails once the wrapped stream tries to produce more
+/// bytes than a fixed budget. Exceeding the budget is an error, not
+/// silent truncation, so an oversized entry cannot slip through as
+/// corrupted data downstream.
+struct LimitedRead<R> {
+    inner: R,
+    limit: u64,
+    remaining: u64,
+}
+
+impl<R: Read> LimitedRead<R> {
+    fn new(inner: R, limit: u64) -> Self {
+        LimitedRead {
+            inner,
+            limit,
+            remaining: limit,
+        }
+    }
+}
+
+impl<R: Read> Read for LimitedRead<R> {
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        if self.remaining == 0 {
+            let mut probe = [0u8; 1];
+            if self.inner.read(&mut probe)? > 0 {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!(
+                        "decompressed data exceeds {} bytes limit (possible zip bomb)",
+                        self.limit
+                    ),
+                ));
+            }
+            return Ok(0);
+        }
+        let cap = match usize::try_from(self.remaining) {
+            Ok(remaining) => buf.len().min(remaining),
+            Err(_) => buf.len(),
+        };
+        let count = self.inner.read(&mut buf[..cap])?;
+        self.remaining -= count as u64;
+        Ok(count)
     }
 }
 
@@ -205,6 +310,20 @@ mod tests {
         Ok(cursor.into_inner())
     }
 
+    /// Packs the given name/content pairs into an in-memory zip
+    /// archive (stored, no compression).
+    fn zip_entries(entries: &[(&str, &str)]) -> Result<Vec<u8>, Box<dyn Error>> {
+        let mut cursor = Cursor::new(Vec::new());
+        let mut writer = zip::ZipWriter::new(&mut cursor);
+        let options = SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
+        for (name, content) in entries {
+            writer.start_file(*name, options)?;
+            writer.write_all(content.as_bytes())?;
+        }
+        writer.finish()?;
+        Ok(cursor.into_inner())
+    }
+
     #[test]
     fn test_read_zip_bytes_sample_feed() -> Result<(), Box<dyn Error>> {
         let bytes = zip_dir(FEED_DIR)?;
@@ -233,15 +352,12 @@ mod tests {
     #[test]
     fn test_missing_required_table_in_archive() -> Result<(), Box<dyn Error>> {
         // an archive with agency.txt only is not a valid feed
-        let mut cursor = Cursor::new(Vec::new());
-        let mut writer = zip::ZipWriter::new(&mut cursor);
-        let options = SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
-        writer.start_file("agency.txt", options)?;
-        writer
-            .write_all(b"agency_name,agency_url,agency_timezone\nDemo,https://x.example,UTC\n")?;
-        writer.finish()?;
+        let bytes = zip_entries(&[(
+            "agency.txt",
+            "agency_name,agency_url,agency_timezone\nDemo,https://x.example,UTC\n",
+        )])?;
 
-        let Err(err) = read_zip_bytes("broken.zip", &cursor.into_inner()) else {
+        let Err(err) = read_zip_bytes("broken.zip", &bytes) else {
             panic!("expected a missing-required-table error");
         };
         assert_eq!(err.file, "stops.txt");
@@ -266,6 +382,90 @@ mod tests {
         assert_eq!(gtfs.locations.len(), 2);
         assert_eq!(gtfs.locations[0].location_id, "zone_a");
         assert_eq!(gtfs.booking_rules.len(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn test_limited_read_over_budget_is_an_error() {
+        let mut reader = LimitedRead::new(&[7u8; 10][..], 5);
+        let mut sink = Vec::new();
+        let Err(err) = reader.read_to_end(&mut sink) else {
+            panic!("expected an over-budget error");
+        };
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("zip bomb"));
+    }
+
+    #[test]
+    fn test_limited_read_within_budget() -> Result<(), Box<dyn Error>> {
+        let mut sink = Vec::new();
+        LimitedRead::new(&[7u8; 10][..], 10).read_to_end(&mut sink)?;
+        assert_eq!(sink, [7u8; 10]);
+
+        sink.clear();
+        LimitedRead::new(&[7u8; 10][..], 64).read_to_end(&mut sink)?;
+        assert_eq!(sink, [7u8; 10]);
+        Ok(())
+    }
+
+    #[test]
+    fn test_read_zip_bytes_feed_in_subfolder() -> Result<(), Box<dyn Error>> {
+        let mut cursor = Cursor::new(Vec::new());
+        let mut writer = zip::ZipWriter::new(&mut cursor);
+        let options = SimpleFileOptions::default().compression_method(CompressionMethod::Stored);
+        writer.add_directory("gtfs/", options)?;
+        for (name, content) in [
+            (
+                "gtfs/agency.txt",
+                "agency_name,agency_url,agency_timezone\nDemo,https://demo.example,UTC\n",
+            ),
+            ("gtfs/stops.txt", "stop_id\nA\n"),
+            ("gtfs/routes.txt", "route_id,route_type\nL1,3\n"),
+            (
+                "gtfs/trips.txt",
+                "route_id,service_id,trip_id\nL1,daily,t0\n",
+            ),
+            (
+                "gtfs/stop_times.txt",
+                "trip_id,stop_sequence,stop_id\nt0,1,A\n",
+            ),
+            ("__MACOSX/gtfs/._agency.txt", "finder junk"),
+        ] {
+            writer.start_file(name, options)?;
+            writer.write_all(content.as_bytes())?;
+        }
+        writer.finish()?;
+
+        let gtfs = read_zip_bytes("subfolder.zip", &cursor.into_inner())?;
+        assert_eq!(gtfs.agencies.len(), 1);
+        assert_eq!(gtfs.agencies[0].agency_name, "Demo");
+        assert_eq!(gtfs.stops.len(), 1);
+        assert_eq!(gtfs.routes.len(), 1);
+        assert_eq!(gtfs.trips.len(), 1);
+        assert_eq!(gtfs.stop_times.len(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn test_mixed_root_and_folder_entries_use_root() -> Result<(), Box<dyn Error>> {
+        let bytes = zip_entries(&[
+            (
+                "agency.txt",
+                "agency_name,agency_url,agency_timezone\nRoot,https://root.example,UTC\n",
+            ),
+            ("stops.txt", "stop_id\nA\n"),
+            ("routes.txt", "route_id,route_type\nL1,3\n"),
+            ("trips.txt", "route_id,service_id,trip_id\nL1,daily,t0\n"),
+            ("stop_times.txt", "trip_id,stop_sequence,stop_id\nt0,1,A\n"),
+            (
+                "nested/agency.txt",
+                "agency_name,agency_url,agency_timezone\nNested,https://n.example,UTC\n",
+            ),
+        ])?;
+
+        let gtfs = read_zip_bytes("mixed.zip", &bytes)?;
+        assert_eq!(gtfs.agencies.len(), 1);
+        assert_eq!(gtfs.agencies[0].agency_name, "Root");
         Ok(())
     }
 }

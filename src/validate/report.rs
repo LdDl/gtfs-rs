@@ -28,9 +28,14 @@ pub enum Rule {
     IdSpaceCollision,
     /// A foreign key references a record that does not exist
     UnknownReference,
-    /// A `parent_station` references a location that is not a
-    /// station (`location_type` 1)
+    /// A `parent_station` of a stop/platform, entrance or generic
+    /// node references a location that is not a station
+    /// (`location_type` 1)
     ParentStationNotStation,
+    /// A `parent_station` of a boarding area (`location_type` 4)
+    /// references a location that is not a stop/platform
+    /// (`location_type` 0)
+    ParentStationNotPlatform,
     /// Neither `route_short_name` nor `route_long_name` is set
     MissingRouteName,
     /// A stop/platform, station or entrance has no `stop_name`
@@ -78,6 +83,14 @@ pub enum Rule {
     MissingFeedInfo,
     /// A trip has no stop times at all
     TripWithoutStopTimes,
+    /// Two `frequencies.txt` windows of the same trip overlap
+    OverlappingFrequency,
+    /// A stop time referencing `location_group_id` or `location_id`
+    /// lacks the required pickup/drop-off window
+    MissingPickupWindow,
+    /// `arrival_time` is missing on the first or last stop time of
+    /// a trip
+    MissingFirstLastArrivalTime,
 }
 
 /// One problem found by validation, with a full trace to its place:

@@ -3,12 +3,15 @@
 
 use std::collections::{HashMap, HashSet};
 
+use crate::misc::format_gtfs_time;
 use crate::reference::GtfsReference;
 use crate::validate::report::{Rule, Severity, ValidationIssue};
 
 /// Runs every dataset-wide rule.
 pub fn check(gtfs: &GtfsReference, issues: &mut Vec<ValidationIssue>) {
     check_duplicates(gtfs, issues);
+    check_composite_duplicates(gtfs, issues);
+    check_overlapping_frequencies(gtfs, issues);
     check_flex_id_space(gtfs, issues);
     check_multi_agency(gtfs, issues);
     check_network_conflict(gtfs, issues);
@@ -18,7 +21,7 @@ pub fn check(gtfs: &GtfsReference, issues: &mut Vec<ValidationIssue>) {
 
 /// Reports duplicate primary keys, one issue per extra occurrence.
 fn check_duplicates(gtfs: &GtfsReference, issues: &mut Vec<ValidationIssue>) {
-    let tables: [(&'static str, Vec<&str>); 12] = [
+    let tables: [(&'static str, Vec<&str>); 13] = [
         (
             "agency.txt",
             gtfs.agencies
@@ -88,6 +91,13 @@ fn check_duplicates(gtfs: &GtfsReference, issues: &mut Vec<ValidationIssue>) {
                 .map(|b| b.booking_rule_id.as_str())
                 .collect(),
         ),
+        (
+            "locations.geojson",
+            gtfs.locations
+                .iter()
+                .map(|l| l.location_id.as_str())
+                .collect(),
+        ),
     ];
     for (file, ids) in tables {
         let mut seen = HashSet::new();
@@ -101,6 +111,115 @@ fn check_duplicates(gtfs: &GtfsReference, issues: &mut Vec<ValidationIssue>) {
                     rule: Rule::DuplicateId,
                     message: "primary key appears more than once".to_string(),
                 });
+            }
+        }
+    }
+}
+
+/// Reports duplicate composite primary keys, one issue per extra
+/// occurrence.
+fn check_composite_duplicates(gtfs: &GtfsReference, issues: &mut Vec<ValidationIssue>) {
+    let mut seen = HashSet::new();
+    for stop_time in &gtfs.stop_times {
+        if !seen.insert((stop_time.trip_id.as_str(), stop_time.stop_sequence)) {
+            issues.push(duplicate_key(
+                "stop_times.txt",
+                &stop_time.trip_id,
+                format!(
+                    "duplicate stop_sequence `{}` for trip `{}`",
+                    stop_time.stop_sequence, stop_time.trip_id
+                ),
+            ));
+        }
+    }
+    let mut seen = HashSet::new();
+    for point in &gtfs.shapes {
+        if !seen.insert((point.shape_id.as_str(), point.shape_pt_sequence)) {
+            issues.push(duplicate_key(
+                "shapes.txt",
+                &point.shape_id,
+                format!(
+                    "duplicate shape_pt_sequence `{}` for shape `{}`",
+                    point.shape_pt_sequence, point.shape_id
+                ),
+            ));
+        }
+    }
+    let mut seen = HashSet::new();
+    for date in &gtfs.calendar_dates {
+        if !seen.insert((date.service_id.as_str(), date.date)) {
+            issues.push(duplicate_key(
+                "calendar_dates.txt",
+                &date.service_id,
+                format!(
+                    "duplicate date `{}` for service `{}`",
+                    date.date, date.service_id
+                ),
+            ));
+        }
+    }
+    let mut seen = HashSet::new();
+    for frequency in &gtfs.frequencies {
+        if !seen.insert((frequency.trip_id.as_str(), frequency.start_time)) {
+            issues.push(duplicate_key(
+                "frequencies.txt",
+                &frequency.trip_id,
+                format!(
+                    "duplicate start_time `{}` for trip `{}`",
+                    format_gtfs_time(frequency.start_time),
+                    frequency.trip_id
+                ),
+            ));
+        }
+    }
+}
+
+/// Builds a composite-duplicate issue.
+fn duplicate_key(file: &'static str, entity_id: &str, message: String) -> ValidationIssue {
+    ValidationIssue {
+        severity: Severity::Error,
+        file,
+        entity_id: Some(entity_id.to_string()),
+        field: None,
+        rule: Rule::DuplicateId,
+        message,
+    }
+}
+
+/// Frequency windows of the same trip must not overlap; a window may
+/// start at the exact time the previous one ends. Windows sharing a
+/// start time are duplicates of the (`trip_id`, `start_time`)
+/// primary key, reported by [`Rule::DuplicateId`] instead.
+fn check_overlapping_frequencies(gtfs: &GtfsReference, issues: &mut Vec<ValidationIssue>) {
+    let mut windows: HashMap<&str, Vec<(u32, u32)>> = HashMap::new();
+    for frequency in &gtfs.frequencies {
+        windows
+            .entry(frequency.trip_id.as_str())
+            .or_default()
+            .push((frequency.start_time, frequency.end_time));
+    }
+    for (trip_id, mut trip_windows) in windows {
+        trip_windows.sort_unstable();
+        let mut reach: Option<(u32, u32)> = None;
+        for (start, end) in trip_windows {
+            if let Some((previous_start, max_end)) = reach {
+                if start > previous_start && start < max_end {
+                    issues.push(ValidationIssue {
+                        severity: Severity::Error,
+                        file: "frequencies.txt",
+                        entity_id: Some(trip_id.to_string()),
+                        field: None,
+                        rule: Rule::OverlappingFrequency,
+                        message: format!(
+                            "window starting at `{}` overlaps an earlier window ending at `{}`",
+                            format_gtfs_time(start),
+                            format_gtfs_time(max_end)
+                        ),
+                    });
+                }
+                reach = Some((start, max_end.max(end)));
+            } else {
+                reach = Some((start, end));
             }
         }
     }
@@ -229,8 +348,12 @@ fn check_trips_without_stop_times(gtfs: &GtfsReference, issues: &mut Vec<Validat
 
 #[cfg(test)]
 mod tests {
+    use crate::misc::GtfsDate;
     use crate::model::TableName;
-    use crate::model::{Agency, LocationGroup, Route, RouteNetwork, RouteType, Stop, Translation};
+    use crate::model::{
+        Agency, CalendarDate, ExceptionType, Frequency, Location, LocationGeometry, LocationGroup,
+        Route, RouteNetwork, RouteType, ShapePoint, Stop, StopTime, Translation,
+    };
     use crate::reference::GtfsReference;
     use crate::validate::report::{Rule, Severity};
 
@@ -268,6 +391,105 @@ mod tests {
         let rules: Vec<_> = report.issues().iter().map(|i| i.rule).collect();
         assert!(rules.contains(&Rule::MissingAgencyId));
         assert!(rules.contains(&Rule::NetworkIdConflict));
+    }
+
+    #[test]
+    fn test_duplicate_location_ids() {
+        let mut gtfs = GtfsReference::new();
+        let ring = vec![[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 0.0]];
+        gtfs.locations.push(Location::new(
+            "zone",
+            LocationGeometry::Polygon(vec![ring.clone()]),
+        ));
+        gtfs.locations
+            .push(Location::new("zone", LocationGeometry::Polygon(vec![ring])));
+
+        let report = gtfs.validate();
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|issue| issue.rule == Rule::DuplicateId
+                    && issue.file == "locations.geojson"
+                    && issue.entity_id.as_deref() == Some("zone"))
+        );
+    }
+
+    #[test]
+    fn test_composite_key_duplicates() -> Result<(), crate::GtfsError> {
+        let mut gtfs = GtfsReference::new();
+        gtfs.stop_times.push(StopTime::new("t0", "A", 5, 3600));
+        gtfs.stop_times.push(StopTime::new("t0", "B", 5, 3700));
+        gtfs.shapes.push(ShapePoint::new("sh1", 0.0, 0.0, 3));
+        gtfs.shapes.push(ShapePoint::new("sh1", 1.0, 1.0, 3));
+        gtfs.calendar_dates.push(CalendarDate::new(
+            "svc",
+            GtfsDate::new(2026, 1, 1)?,
+            ExceptionType::Added,
+        ));
+        gtfs.calendar_dates.push(CalendarDate::new(
+            "svc",
+            GtfsDate::new(2026, 1, 1)?,
+            ExceptionType::Removed,
+        ));
+        gtfs.frequencies.push(Frequency::new("t0", 3600, 7200, 300));
+        gtfs.frequencies.push(Frequency::new("t0", 3600, 9000, 600));
+
+        let report = gtfs.validate();
+        let duplicate_files: Vec<&str> = report
+            .issues()
+            .iter()
+            .filter(|issue| issue.rule == Rule::DuplicateId)
+            .map(|issue| issue.file)
+            .collect();
+        assert!(duplicate_files.contains(&"stop_times.txt"));
+        assert!(duplicate_files.contains(&"shapes.txt"));
+        assert!(duplicate_files.contains(&"calendar_dates.txt"));
+        assert!(duplicate_files.contains(&"frequencies.txt"));
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|issue| issue.message == "duplicate stop_sequence `5` for trip `t0`")
+        );
+        // identical start times are duplicates, not overlaps
+        assert!(
+            !report
+                .issues()
+                .iter()
+                .any(|issue| issue.rule == Rule::OverlappingFrequency)
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn test_overlapping_frequencies() {
+        let mut gtfs = GtfsReference::new();
+        gtfs.frequencies
+            .push(Frequency::new("t0", 6 * 3600, 8 * 3600, 300));
+        gtfs.frequencies
+            .push(Frequency::new("t0", 7 * 3600, 9 * 3600, 600));
+        // touching windows are legal
+        gtfs.frequencies
+            .push(Frequency::new("t1", 6 * 3600, 8 * 3600, 300));
+        gtfs.frequencies
+            .push(Frequency::new("t1", 8 * 3600, 10 * 3600, 600));
+
+        let report = gtfs.validate();
+        assert!(
+            report
+                .issues()
+                .iter()
+                .any(|issue| issue.rule == Rule::OverlappingFrequency
+                    && issue.entity_id.as_deref() == Some("t0"))
+        );
+        assert!(
+            !report
+                .issues()
+                .iter()
+                .any(|issue| issue.rule == Rule::OverlappingFrequency
+                    && issue.entity_id.as_deref() == Some("t1"))
+        );
     }
 
     #[test]

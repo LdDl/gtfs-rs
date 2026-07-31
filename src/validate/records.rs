@@ -1,7 +1,9 @@
 //! Intra-record rules: the conditionally required/forbidden field
 //! combinations of the specification, checked one record at a time.
 
-use crate::model::LocationType;
+use std::collections::HashMap;
+
+use crate::model::{LocationType, StopTime};
 use crate::reference::GtfsReference;
 use crate::validate::report::{Rule, Severity, ValidationIssue};
 
@@ -113,7 +115,19 @@ pub fn check(gtfs: &GtfsReference, issues: &mut Vec<ValidationIssue>) {
             }
             _ => {}
         }
+        if (stop_time.location_group_id.is_some() || stop_time.location_id.is_some())
+            && window_parts == (false, false)
+        {
+            issues.push(error(
+                "stop_times.txt",
+                &entity,
+                Rule::MissingPickupWindow,
+                "a pickup/drop-off window is required with location_group_id or location_id",
+            ));
+        }
     }
+
+    check_first_last_arrival(gtfs, issues);
 
     for timeframe in &gtfs.timeframes {
         if timeframe.start_time.is_some() != timeframe.end_time.is_some() {
@@ -176,6 +190,53 @@ pub fn check(gtfs: &GtfsReference, issues: &mut Vec<ValidationIssue>) {
                 Rule::AttributionMultipleTargets,
                 "at most one of agency_id, route_id, trip_id may be set",
             ));
+        }
+    }
+}
+
+/// `arrival_time` is required on the first and last stop time of a
+/// trip (by `stop_sequence`); on-demand rows (a location group, a
+/// GeoJSON location or a pickup/drop-off window) are exempt. The
+/// spec also requires times for `timepoint = 1`, but an omitted
+/// `timepoint` parses to the default [`Timepoint::Exact`], so an
+/// explicit `1` cannot be told apart from an empty value; checking
+/// it would false-flag interpolated-times feeds.
+///
+/// [`Timepoint::Exact`]: crate::model::Timepoint::Exact
+fn check_first_last_arrival(gtfs: &GtfsReference, issues: &mut Vec<ValidationIssue>) {
+    let mut edges: HashMap<&str, (&StopTime, &StopTime)> = HashMap::new();
+    for stop_time in &gtfs.stop_times {
+        edges
+            .entry(stop_time.trip_id.as_str())
+            .and_modify(|(first, last)| {
+                if stop_time.stop_sequence < first.stop_sequence {
+                    *first = stop_time;
+                }
+                if stop_time.stop_sequence > last.stop_sequence {
+                    *last = stop_time;
+                }
+            })
+            .or_insert((stop_time, stop_time));
+    }
+    for (trip_id, (first, last)) in edges {
+        let trip_edges = if first.stop_sequence == last.stop_sequence {
+            vec![first]
+        } else {
+            vec![first, last]
+        };
+        for stop_time in trip_edges {
+            let on_demand = stop_time.location_group_id.is_some()
+                || stop_time.location_id.is_some()
+                || stop_time.start_pickup_drop_off_window.is_some()
+                || stop_time.end_pickup_drop_off_window.is_some();
+            if !on_demand && stop_time.arrival_time.is_none() {
+                issues.push(error(
+                    "stop_times.txt",
+                    &format!("{}#{}", trip_id, stop_time.stop_sequence),
+                    Rule::MissingFirstLastArrivalTime,
+                    "arrival_time is required for the first and last stop time of a trip",
+                ));
+            }
         }
     }
 }
@@ -260,6 +321,47 @@ mod tests {
         assert!(rules.contains(&Rule::ConflictingStopTimeLocation));
         assert!(rules.contains(&Rule::TimesWithPickupWindow));
         assert!(rules.contains(&Rule::IncompleteWindow));
+    }
+
+    #[test]
+    fn test_flex_row_requires_window() {
+        let mut gtfs = GtfsReference::new();
+        let mut flex = StopTime::new("t0", "A", 1, 3600);
+        flex.stop_id = None;
+        flex.arrival_time = None;
+        flex.departure_time = None;
+        flex.location_id = Some("zone".to_string());
+        gtfs.stop_times.push(flex);
+
+        let rules = rules_of(&gtfs);
+        assert!(rules.contains(&Rule::MissingPickupWindow));
+        // on-demand rows are exempt from the first/last requirement
+        assert!(!rules.contains(&Rule::MissingFirstLastArrivalTime));
+    }
+
+    #[test]
+    fn test_first_and_last_stop_times_require_arrival() {
+        let mut gtfs = GtfsReference::new();
+        let mut first = StopTime::new("t0", "A", 1, 3600);
+        first.arrival_time = None;
+        first.departure_time = None;
+        gtfs.stop_times.push(first);
+        let mut middle = StopTime::new("t0", "B", 2, 3700);
+        middle.arrival_time = None;
+        middle.departure_time = None;
+        gtfs.stop_times.push(middle);
+        gtfs.stop_times.push(StopTime::new("t0", "C", 3, 3800));
+
+        let flagged: Vec<_> = gtfs
+            .validate()
+            .issues()
+            .iter()
+            .filter(|issue| issue.rule == Rule::MissingFirstLastArrivalTime)
+            .map(|issue| issue.entity_id.clone())
+            .collect();
+        // only the first row lacks a required arrival_time; the
+        // interpolated middle row is legal
+        assert_eq!(flagged, [Some("t0#1".to_string())]);
     }
 
     #[test]

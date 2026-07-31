@@ -10,6 +10,9 @@ use crate::writers::{WriteError, WriteErrorKind};
 /// Renders GTFS-Flex zones as `locations.geojson` text: a GeoJSON
 /// `FeatureCollection` per RFC 7946, indented for readability.
 ///
+/// Linear rings that are stored open (last point differing from the
+/// first) are closed automatically on output, as RFC 7946 requires.
+///
 /// # Arguments
 ///
 /// * `locations` - The zones to render
@@ -200,6 +203,10 @@ pub fn write_locations_path(
 }
 
 /// Appends one polygon (a list of rings) as GeoJSON coordinates.
+/// RFC 7946 requires linear rings to be closed (first point ==
+/// last point); rings stored open are closed on the fly so that the
+/// output is always valid GeoJSON and survives a write/read
+/// roundtrip.
 fn push_polygon(out: &mut String, rings: &[Vec<[f64; 2]>]) {
     out.push('[');
     let mut first_ring = true;
@@ -215,14 +222,25 @@ fn push_polygon(out: &mut String, rings: &[Vec<[f64; 2]>]) {
                 out.push_str(", ");
             }
             first_point = false;
-            out.push('[');
-            out.push_str(&lon.to_string());
+            push_point(out, *lon, *lat);
+        }
+        if let (Some(first), Some(last)) = (ring.first(), ring.last())
+            && first != last
+        {
             out.push_str(", ");
-            out.push_str(&lat.to_string());
-            out.push(']');
+            push_point(out, first[0], first[1]);
         }
         out.push(']');
     }
+    out.push(']');
+}
+
+/// Appends one `[lon, lat]` coordinate pair.
+fn push_point(out: &mut String, lon: f64, lat: f64) {
+    out.push('[');
+    out.push_str(&lon.to_string());
+    out.push_str(", ");
+    out.push_str(&lat.to_string());
     out.push(']');
 }
 
@@ -271,6 +289,22 @@ mod tests {
         assert!(text.contains("[-116.8, 36.85]"));
     }
 
+    #[test]
+    fn test_closes_open_rings() {
+        let open = Location::new(
+            "zone_open",
+            LocationGeometry::Polygon(vec![vec![
+                [-116.80, 36.85],
+                [-116.70, 36.85],
+                [-116.70, 36.95],
+            ]]),
+        );
+        let text = locations_to_string(&[open]);
+        assert!(
+            text.contains("[[-116.8, 36.85], [-116.7, 36.85], [-116.7, 36.95], [-116.8, 36.85]]")
+        );
+    }
+
     #[cfg(feature = "geojson")]
     #[test]
     fn test_roundtrip_through_reader() -> Result<(), crate::parsers::ParseError> {
@@ -284,6 +318,27 @@ mod tests {
         };
         assert_eq!(rings[0].len(), 4);
         assert_eq!(rings[0][0], [-116.80, 36.85]);
+        Ok(())
+    }
+
+    #[cfg(feature = "geojson")]
+    #[test]
+    fn test_open_ring_roundtrips_closed() -> Result<(), crate::parsers::ParseError> {
+        let open = Location::new(
+            "zone_open",
+            LocationGeometry::Polygon(vec![vec![
+                [-116.80, 36.85],
+                [-116.70, 36.85],
+                [-116.70, 36.95],
+            ]]),
+        );
+        let text = locations_to_string(&[open]);
+        let parsed = read_locations_str("locations.geojson", &text)?;
+        let LocationGeometry::Polygon(rings) = &parsed[0].geometry else {
+            panic!("expected a Polygon");
+        };
+        assert_eq!(rings[0].len(), 4);
+        assert_eq!(rings[0][0], rings[0][3]);
         Ok(())
     }
 }

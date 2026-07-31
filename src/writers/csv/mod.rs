@@ -12,6 +12,12 @@
 //! [`CsvWrite`]; implement it for custom types to write GTFS
 //! extension tables with the same machinery.
 //!
+//! One normalization to be aware of: values are written verbatim,
+//! but the `parsers::csv` readers trim surrounding whitespace, so
+//! leading/trailing spaces do not survive a write/read roundtrip
+//! (`"  x  "` reads back as `"x"`, an all-spaces value as an absent
+//! one). GTFS strongly discourages such padding in the first place.
+//!
 //! Module layout: the [`CsvWrite`] trait and the field escaping live
 //! in `table.rs`, the writing functions in `writer.rs`, the named
 //! shortcuts in `shortcuts.rs`, and each GTFS table has its own file
