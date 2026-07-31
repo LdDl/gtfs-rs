@@ -22,11 +22,13 @@ const MAX_DECOMPRESSED_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 /// The archive is expected to hold the tables at its root, as the
 /// specification requires; an archive that keeps every entry inside
 /// one shared top-level folder (as the macOS Finder "Compress"
-/// command produces) is accepted as well. Each entry is decompressed
-/// up to a 4 GiB cap to guard against zip bombs. The required tables
-/// and the handling of optional ones are the same as for
-/// [`read_dir`](crate::parsers::read_dir); with the `geojson` cargo
-/// feature enabled, a bundled `locations.geojson` is read as well.
+/// command produces) is accepted as well, and entry names are
+/// matched case-insensitively (`AGENCY.TXT` works). Each entry is
+/// decompressed up to a 4 GiB cap to guard against zip bombs. The
+/// required tables and the handling of optional ones are the same as
+/// for [`read_dir`](crate::parsers::read_dir); with the `geojson`
+/// cargo feature enabled, a bundled `locations.geojson` is read as
+/// well.
 ///
 /// # Arguments
 ///
@@ -51,10 +53,7 @@ const MAX_DECOMPRESSED_BYTES: u64 = 4 * 1024 * 1024 * 1024;
 /// ```
 pub fn read_zip(path: impl AsRef<Path>) -> Result<GtfsReference, ParseError> {
     let path = path.as_ref();
-    let label = match path.file_name() {
-        Some(name) => name.to_string_lossy().into_owned(),
-        None => path.display().to_string(),
-    };
+    let label = path.display().to_string();
     let file = match File::open(path) {
         Ok(file) => file,
         Err(e) => {
@@ -77,8 +76,9 @@ pub fn read_zip(path: impl AsRef<Path>) -> Result<GtfsReference, ParseError> {
 /// Reads a zipped GTFS feed from bytes already in memory - e.g. an
 /// archive just downloaded over HTTP, without touching the disk.
 ///
-/// The single-top-level-folder tolerance and the per-entry
-/// decompression cap of [`read_zip`] apply here as well.
+/// The single-top-level-folder tolerance, the case-insensitive
+/// entry-name matching and the per-entry decompression cap of
+/// [`read_zip`] apply here as well.
 ///
 /// # Arguments
 ///
@@ -153,13 +153,33 @@ impl<R: Read + Seek> ZipSource<R> {
     }
 
     /// Resolves a table name to its archive index: the plain name
-    /// first, then behind the detected common folder prefix.
+    /// first, then behind the detected common folder prefix, then -
+    /// tolerating spec-violating but unambiguous archives - the
+    /// same two forms compared ASCII-case-insensitively
+    /// (e.g. `AGENCY.TXT`).
     fn entry_index(&self, name: &str) -> Option<usize> {
         if let Some(index) = self.archive.index_for_name(name) {
             return Some(index);
         }
-        let prefix = self.prefix.as_ref()?;
-        self.archive.index_for_name(&format!("{prefix}{name}"))
+        if let Some(prefix) = self.prefix.as_ref()
+            && let Some(index) = self.archive.index_for_name(&format!("{prefix}{name}"))
+        {
+            return Some(index);
+        }
+        // file_names() has no index-order guarantee, so resolve the
+        // canonical spelling first and look its index up by name
+        let prefixed = self.prefix.as_ref().map(|p| format!("{p}{name}"));
+        let found = self
+            .archive
+            .file_names()
+            .find(|candidate| {
+                candidate.eq_ignore_ascii_case(name)
+                    || prefixed
+                        .as_deref()
+                        .is_some_and(|p| candidate.eq_ignore_ascii_case(p))
+            })
+            .map(str::to_string)?;
+        self.archive.index_for_name(&found)
     }
 }
 
@@ -463,6 +483,26 @@ mod tests {
         assert_eq!(gtfs.routes.len(), 1);
         assert_eq!(gtfs.trips.len(), 1);
         assert_eq!(gtfs.stop_times.len(), 1);
+        Ok(())
+    }
+
+    #[test]
+    fn test_uppercase_entry_names_are_tolerated() -> Result<(), Box<dyn Error>> {
+        let bytes = zip_entries(&[
+            (
+                "AGENCY.TXT",
+                "agency_name,agency_url,agency_timezone\nDemo,https://demo.example,UTC\n",
+            ),
+            ("Stops.txt", "stop_id\nA\n"),
+            ("routes.txt", "route_id,route_type\nL1,3\n"),
+            ("trips.txt", "route_id,service_id,trip_id\nL1,daily,t0\n"),
+            ("stop_times.txt", "trip_id,stop_sequence,stop_id\nt0,1,A\n"),
+        ])?;
+
+        let gtfs = read_zip_bytes("uppercase.zip", &bytes)?;
+        assert_eq!(gtfs.agencies.len(), 1);
+        assert_eq!(gtfs.agencies[0].agency_name, "Demo");
+        assert_eq!(gtfs.stops.len(), 1);
         Ok(())
     }
 

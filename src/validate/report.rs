@@ -7,12 +7,28 @@ use std::slice;
 use std::vec;
 
 /// How serious a validation issue is.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+///
+/// Severities are ordered by seriousness (`Warning < Error`), so
+/// the worst issue of a set can be taken with plain comparisons.
+///
+/// # Examples
+///
+/// ```
+/// use gtfs_rs::{GtfsReference, Route, RouteType, Severity};
+///
+/// let mut gtfs = GtfsReference::new();
+/// gtfs.routes.push(Route::new("L1", RouteType::Bus)); // no name
+///
+/// let report = gtfs.validate();
+/// let worst = report.issues().iter().map(|issue| issue.severity).max();
+/// assert_eq!(worst, Some(Severity::Error));
+/// ```
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Severity {
-    /// The dataset violates a hard specification requirement.
-    Error,
     /// The dataset is questionable but not spec-invalid.
     Warning,
+    /// The dataset violates a hard specification requirement.
+    Error,
 }
 
 /// Machine-readable identifier of a validation rule.

@@ -10,8 +10,9 @@ use std::io;
 #[derive(Debug)]
 #[non_exhaustive]
 pub struct WriteError {
-    /// File being written when the error occurred
-    /// (e.g. "stops.txt")
+    /// File being written when the error occurred: the full
+    /// destination path for the path-based writers (e.g. "out_feed/stops.txt"),
+    /// the caller-supplied label for the stream-based ones
     pub file: String,
     /// What exactly went wrong
     pub kind: WriteErrorKind,

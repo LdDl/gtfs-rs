@@ -186,10 +186,7 @@ pub fn write_locations_path(
     path: impl AsRef<Path>,
 ) -> Result<(), WriteError> {
     let path = path.as_ref();
-    let label = match path.file_name() {
-        Some(name) => name.to_string_lossy().into_owned(),
-        None => path.display().to_string(),
-    };
+    let label = path.display().to_string();
     let file = match File::create(path) {
         Ok(file) => file,
         Err(e) => {
